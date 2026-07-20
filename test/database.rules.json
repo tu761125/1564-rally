@@ -10,7 +10,13 @@
     "sitePresence": {
       ".read": "auth != null",
       "$session": {
-        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || data.child('uid').val() === auth.uid)"
+        ".write": "auth != null && ((!data.exists() && (!newData.exists() || newData.child('uid').val() === auth.uid)) || (data.exists() && data.child('uid').val() === auth.uid))"
+      }
+    },
+    "rooms": {
+      "$roomId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
       }
     }
   }

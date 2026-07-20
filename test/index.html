@@ -77,11 +77,29 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 .mini-counter{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin:14px 0 0;padding:8px 12px;color:var(--muted);font-size:11px;text-align:center}
 .mini-counter strong{margin-left:3px;color:var(--gold2);font-variant-numeric:tabular-nums}
 @media(max-width:620px){.pool-row{grid-template-columns:42px 1fr 1fr 18px 1fr 40px}.pool-row .name-field{grid-column:2/7}.buttons{grid-template-columns:1fr}}
+
+.room-tabs{grid-template-columns:repeat(3,1fr)}
+.room-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.room-box{border:1px solid var(--line);border-radius:14px;padding:14px;background:rgba(255,255,255,.025)}
+.room-box h3{margin:0 0 12px}
+.room-box label{display:block;margin:10px 0 6px;color:var(--muted);font-size:12px;font-weight:800}
+.room-box input{width:100%;box-sizing:border-box}
+.room-summary{display:flex;justify-content:space-between;align-items:center;padding:14px;margin-bottom:12px;border:1px solid var(--line);border-radius:14px}
+.room-summary small{display:block;color:var(--muted)}
+.room-summary strong{display:block;font-size:24px;color:var(--gold2)}
+.member-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;margin-bottom:8px;border:1px solid var(--line);border-radius:10px}
+.member-name{font-weight:900}
+.kick-btn{min-height:34px;padding:6px 10px}
+.room-timer{text-align:center;font-size:48px;font-weight:1000;letter-spacing:.06em;margin:16px 0 4px;color:var(--gold2)}
+.room-status{text-align:center;color:var(--muted)}
+.status-chip{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:6px 10px;color:var(--muted)}
+@media(max-width:720px){.room-tabs{grid-template-columns:1fr}.room-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、準備倒數與進度測試版</p><span class="version">VERSION 2.5.3 FIREBASE READY</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1 ROOM TEST</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -91,9 +109,10 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
   <small id="utcDate">UTC</small>
 </section>
 
-<div class="tabs">
+<div class="tabs room-tabs">
 <button class="tab-btn active" data-tab="quick">Quick Rally · 快速集結</button>
 <button class="tab-btn" data-tab="pool">Player Pool · 玩家名單</button>
+<button class="tab-btn" data-tab="room">Sync Room · 同步房間</button>
 </div>
 
 <section class="card prep-card">
@@ -125,6 +144,71 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 <section class="card"><div class="buttons"><button id="poolCalc" class="btn primary">Calculate Selected · 計算已勾選</button><button id="clearSelection" class="btn secondary">Clear Selection · 取消勾選</button></div><p id="poolError" class="msg error"></p></section>
 <section id="poolResultCard" class="card hidden"><div class="head"><div><span class="step">02</span><h2>Selected Rally Order<small>本次集結順序</small></h2></div></div><div id="poolResults"></div><div class="buttons"><button id="poolStart" class="btn primary">Start Countdown · 開始倒數</button><button id="poolCopy" class="btn secondary">Copy · 複製</button></div></section>
 </section>
+
+<section id="roomTab" class="hidden">
+  <section class="card">
+    <div class="head">
+      <div><span class="step">01</span><h2>Sync Room<small>同步房間測試版</small></h2></div>
+      <span class="note">Host control<br>房長控制</span>
+    </div>
+
+    <div id="roomEntry" class="room-grid">
+      <div class="room-box">
+        <h3>Create Room · 建立房間</h3>
+        <label>Room ID · 房號</label>
+        <input id="createRoomId" maxlength="12" placeholder="1564BEAR">
+        <label>Password · 密碼</label>
+        <input id="createRoomPassword" type="password" maxlength="12" placeholder="4–12 letters or numbers">
+        <label>Host ID · 房長 ID</label>
+        <input id="createHostId" maxlength="16" placeholder="Game ID · 遊戲 ID">
+        <button id="createRoomBtn" class="btn primary">Create Room · 建立房間</button>
+      </div>
+
+      <div class="room-box">
+        <h3>Join Room · 加入房間</h3>
+        <label>Room ID · 房號</label>
+        <input id="joinRoomId" maxlength="12" placeholder="Room ID · 房號">
+        <label>Password · 密碼</label>
+        <input id="joinRoomPassword" type="password" maxlength="12" placeholder="Password · 密碼">
+        <label>Player ID · 玩家 ID</label>
+        <input id="joinPlayerId" maxlength="16" placeholder="Game ID · 遊戲 ID">
+        <button id="joinRoomBtn" class="btn primary">Join Room · 加入房間</button>
+      </div>
+    </div>
+    <p id="roomEntryMsg" class="msg"></p>
+
+    <div id="roomLive" class="hidden">
+      <div class="room-summary">
+        <div><small>Room · 房間</small><strong id="liveRoomId">—</strong></div>
+        <div><small>Members · 人數</small><strong id="liveRoomCount">0</strong></div>
+      </div>
+
+      <div class="room-grid">
+        <div class="room-box">
+          <h3>Members · 房間成員</h3>
+          <div id="roomMembers"></div>
+          <button id="leaveRoomBtn" class="btn secondary">Leave Room · 離開房間</button>
+        </div>
+
+        <div class="room-box">
+          <h3>Room Countdown · 房間倒數</h3>
+          <p id="roomRole" class="status-chip">Viewer · 觀看者</p>
+          <label>Countdown Seconds · 倒數秒數</label>
+          <input id="roomDuration" type="number" min="1" max="600" value="30">
+          <div id="roomTimer" class="room-timer">00:30</div>
+          <p id="roomStatus" class="room-status">Waiting · 等待開始</p>
+          <div id="hostControls" class="buttons hidden">
+            <button id="roomStartBtn" class="btn primary">Start · 開始</button>
+            <button id="roomPauseBtn" class="btn secondary">Pause · 暫停</button>
+            <button id="roomResetBtn" class="btn secondary">Reset · 重設</button>
+          </div>
+        </div>
+      </div>
+      <p id="roomLiveMsg" class="msg"></p>
+    </div>
+  </section>
+</section>
+
 <section class="mini-counter">
   <span>👁 Visits · 瀏覽 <strong id="visitCount">--</strong></span>
   <span>🟢 Online · 在線 <strong id="onlineCount">--</strong></span>
@@ -167,7 +251,7 @@ function parse(min,sec){min=+(min||0);sec=+(sec||0);if(min<0||min>5||sec<0||sec>
 function buildRallies(data){const sorted=[...data].sort((a,b)=>b.march-a.march),longest=sorted[0].march;return sorted.map((x,i)=>({...x,pos:i+1,offset:longest-x.march}))}
 function resultHtml(rs){return rs.map(r=>`<div class="result"><div class="pos">${r.pos}</div><div><div class="rname">${esc(r.name)}</div><div class="rsub">March ${fmt(r.march)}</div></div><div class="offset">${r.offset===0?"NOW":"+"+fmt(r.offset)}</div></div>`).join("")}
 
-document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active");$("quickTab").classList.toggle("hidden",b.dataset.tab!=="quick");$("poolTab").classList.toggle("hidden",b.dataset.tab!=="pool")});
+document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active");$("quickTab").classList.toggle("hidden",b.dataset.tab!=="quick");$("poolTab").classList.toggle("hidden",b.dataset.tab!=="pool");$("roomTab").classList.toggle("hidden",b.dataset.tab!=="room")});
 
 function renderQuick(){
  $("quickPlayers").innerHTML="";
@@ -382,19 +466,180 @@ if (!configured) {
     window.addEventListener("pagehide", () => remove(sessionRef).catch(() => {}));
   } catch (error) {
     console.error("Firebase counter error:", error);
-    const code = error?.code || "unknown";
-    const message = error?.message || "Unknown Firebase error";
-    visitEl.textContent = code;
-    onlineEl.textContent = "查看下方";
-
-    const diagnostic = document.createElement("div");
-    diagnostic.style.cssText = "max-width:760px;margin:8px auto 20px;padding:10px 12px;border:1px solid #a4514b;border-radius:10px;background:#2b1919;color:#ffc1bc;font-size:11px;overflow-wrap:anywhere";
-    diagnostic.innerHTML = "<strong>Firebase Error：</strong><br>" +
-      String(code).replace(/</g,"&lt;") + "<br>" +
-      String(message).replace(/</g,"&lt;");
-    document.querySelector(".mini-counter")?.insertAdjacentElement("afterend", diagnostic);
+    visitEl.textContent = "暫時無法連線";
+    onlineEl.textContent = "暫時無法連線";
   }
 }
+</script>
+
+
+<script type="module">
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { getDatabase, ref, get, set, update, remove, onValue, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+
+const roomFirebaseConfig={
+  apiKey:"AIzaSyDWGzhjYHMbpF7rAL06NAljkMqWLY_qrsA",
+  authDomain:"rally-12ebd.firebaseapp.com",
+  databaseURL:"https://rally-12ebd-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"rally-12ebd",
+  storageBucket:"rally-12ebd.firebasestorage.app",
+  messagingSenderId:"32423245045",
+  appId:"1:32423245045:web:b6967c121fb9e6ca0881bc",
+  measurementId:"G-ZCS1JXN6SB"
+};
+const roomApp=getApps().length?getApp():initializeApp(roomFirebaseConfig);
+const roomAuth=getAuth(roomApp);
+const roomDb=getDatabase(roomApp);
+const q=id=>document.getElementById(id);
+
+let current={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null};
+
+const cleanRoom=v=>v.trim().toUpperCase();
+const clean=v=>v.trim();
+const roomOk=v=>/^[A-Z0-9]{4,12}$/.test(v);
+const passOk=v=>/^[A-Za-z0-9]{4,12}$/.test(v);
+const idOk=v=>v.length>=2&&v.length<=16;
+
+async function authUser(){
+  if(roomAuth.currentUser)return roomAuth.currentUser;
+  return (await signInAnonymously(roomAuth)).user;
+}
+async function hash(text){
+  const raw=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(text));
+  return [...new Uint8Array(raw)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+function msg(el,text,type=""){
+  el.textContent=text;
+  el.className="msg "+type;
+}
+function fmt(sec){
+  sec=Math.max(0,Math.floor(Number(sec)||0));
+  return String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");
+}
+function esc(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+async function createRoom(){
+  const rid=cleanRoom(q("createRoomId").value), pw=q("createRoomPassword").value, pid=clean(q("createHostId").value);
+  if(!roomOk(rid))return msg(q("roomEntryMsg"),"Room ID: 4–12 letters or numbers · 房號需為 4–12 位英文或數字","error");
+  if(!passOk(pw))return msg(q("roomEntryMsg"),"Password: 4–12 letters or numbers · 密碼需為 4–12 位英文或數字","error");
+  if(!idOk(pid))return msg(q("roomEntryMsg"),"Host ID: 2–16 characters · 房長 ID 需為 2–16 字元","error");
+  try{
+    const user=await authUser(), rr=ref(roomDb,`rooms/${rid}`);
+    if((await get(rr)).exists())return msg(q("roomEntryMsg"),"Room ID already exists · 房號已存在","error");
+    await set(rr,{
+      passwordHash:await hash(pw),
+      hostUid:user.uid,
+      createdAt:serverTimestamp(),
+      status:"waiting",
+      duration:30,
+      remaining:30,
+      startedAt:null,
+      members:{[user.uid]:{playerId:pid,role:"host",joinedAt:serverTimestamp()}}
+    });
+    await enterRoom(rid,user.uid,true);
+  }catch(e){console.error(e);msg(q("roomEntryMsg"),(e.code||"Firebase error")+" · 建立失敗","error")}
+}
+
+async function joinRoom(){
+  const rid=cleanRoom(q("joinRoomId").value), pw=q("joinRoomPassword").value, pid=clean(q("joinPlayerId").value);
+  if(!roomOk(rid)||!passOk(pw)||!idOk(pid))return msg(q("roomEntryMsg"),"Please check Room ID, Password and Player ID · 請檢查房號、密碼及玩家 ID","error");
+  try{
+    const user=await authUser(), rr=ref(roomDb,`rooms/${rid}`), snap=await get(rr);
+    if(!snap.exists())return msg(q("roomEntryMsg"),"Room not found · 找不到房間","error");
+    const room=snap.val();
+    if(await hash(pw)!==room.passwordHash)return msg(q("roomEntryMsg"),"Wrong password · 密碼錯誤","error");
+    if(Object.values(room.members||{}).some(m=>(m.playerId||"").toLowerCase()===pid.toLowerCase()))return msg(q("roomEntryMsg"),"Player ID already exists · 玩家 ID 已存在","error");
+    await set(ref(roomDb,`rooms/${rid}/members/${user.uid}`),{playerId:pid,role:"viewer",joinedAt:serverTimestamp()});
+    await enterRoom(rid,user.uid,false);
+  }catch(e){console.error(e);msg(q("roomEntryMsg"),(e.code||"Firebase error")+" · 加入失敗","error")}
+}
+
+async function enterRoom(rid,uid,isHost){
+  current.roomId=rid;current.uid=uid;current.isHost=isHost;
+  q("roomEntry").classList.add("hidden");q("roomLive").classList.remove("hidden");
+  q("liveRoomId").textContent=rid;
+  q("roomRole").textContent=isHost?"Host · 房長":"Viewer · 觀看者";
+  q("hostControls").classList.toggle("hidden",!isHost);
+  q("roomDuration").disabled=!isHost;
+  const mr=ref(roomDb,`rooms/${rid}/members/${uid}`);
+  await onDisconnect(mr).remove();
+  current.roomUnsub=onValue(ref(roomDb,`rooms/${rid}`),snap=>{
+    if(!snap.exists()){msg(q("roomEntryMsg"),"Room closed or cleared · 房間已關閉或清空","error");return leaveUi()}
+    render(snap.val());
+  });
+  current.memberUnsub=onValue(mr,snap=>{
+    if(!snap.exists()&&current.roomId){msg(q("roomEntryMsg"),"You were removed by the host · 你已被房長踢出","error");leaveUi()}
+  });
+}
+
+function render(room){
+  const members=Object.entries(room.members||{});
+  q("liveRoomCount").textContent=members.length;
+  q("roomMembers").innerHTML="";
+  members.forEach(([key,m])=>{
+    const row=document.createElement("div");row.className="member-row";
+    row.innerHTML=`<span class="member-name">${m.role==="host"?"👑 ":"🟢 "}${esc(m.playerId||"Unknown")}</span>`;
+    if(current.isHost&&m.role!=="host"){
+      const b=document.createElement("button");b.className="btn secondary kick-btn";b.textContent="Kick · 踢出";
+      b.onclick=async()=>{if(confirm(`Kick ${m.playerId}? · 確定踢出 ${m.playerId}？`))await remove(ref(roomDb,`rooms/${current.roomId}/members/${key}`))};
+      row.appendChild(b);
+    }
+    q("roomMembers").appendChild(row);
+  });
+  q("roomDuration").value=room.duration||30;
+  clearInterval(current.timer);
+  const draw=()=>{
+    let remain=Number(room.remaining??room.duration??30);
+    if(room.status==="running"&&room.startedAt)remain=Math.max(0,Number(room.duration||30)-Math.floor((Date.now()-Number(room.startedAt))/1000));
+    q("roomTimer").textContent=fmt(remain);
+    q("roomStatus").textContent=room.status==="running"?(remain>0?"Running · 倒數中":"Finished · 已完成"):room.status==="paused"?"Paused · 已暫停":"Waiting · 等待開始";
+  };
+  draw();current.timer=setInterval(draw,250);
+}
+
+async function startRoom(){
+  if(!current.isHost)return;
+  const d=Math.max(1,Math.min(600,Number(q("roomDuration").value)||30));
+  await update(ref(roomDb,`rooms/${current.roomId}`),{duration:d,remaining:d,startedAt:Date.now(),status:"running"});
+}
+async function pauseRoom(){
+  if(!current.isHost)return;
+  const snap=await get(ref(roomDb,`rooms/${current.roomId}`));if(!snap.exists())return;
+  const r=snap.val();let remain=Number(r.remaining??r.duration??30);
+  if(r.status==="running"&&r.startedAt)remain=Math.max(0,Number(r.duration||30)-Math.floor((Date.now()-Number(r.startedAt))/1000));
+  await update(ref(roomDb,`rooms/${current.roomId}`),{remaining:remain,startedAt:null,status:"paused"});
+}
+async function resetRoom(){
+  if(!current.isHost)return;
+  const d=Math.max(1,Math.min(600,Number(q("roomDuration").value)||30));
+  await update(ref(roomDb,`rooms/${current.roomId}`),{duration:d,remaining:d,startedAt:null,status:"waiting"});
+}
+async function leaveRoom(){
+  if(!current.roomId)return;
+  const rid=current.roomId,uid=current.uid;
+  await remove(ref(roomDb,`rooms/${rid}/members/${uid}`));
+  const s=await get(ref(roomDb,`rooms/${rid}/members`));
+  if(!s.exists())await remove(ref(roomDb,`rooms/${rid}`));
+  leaveUi();
+}
+function leaveUi(){
+  clearInterval(current.timer);
+  if(typeof current.roomUnsub==="function")current.roomUnsub();
+  if(typeof current.memberUnsub==="function")current.memberUnsub();
+  current={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null};
+  q("roomLive").classList.add("hidden");q("roomEntry").classList.remove("hidden");
+  q("roomMembers").innerHTML="";
+}
+
+q("createRoomBtn").onclick=createRoom;
+q("joinRoomBtn").onclick=joinRoom;
+q("leaveRoomBtn").onclick=leaveRoom;
+q("roomStartBtn").onclick=startRoom;
+q("roomPauseBtn").onclick=pauseRoom;
+q("roomResetBtn").onclick=resetRoom;
 </script>
 
 </body>
