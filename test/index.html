@@ -1,1 +1,120 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101722">
+<title>1564 Rally Timer v2.2 Test</title>
+<style>
+:root{
+  --bg:#0a0f16;--panel:#192331;--panel2:#101822;--line:#3b4b60;
+  --gold:#e6b85f;--gold2:#ffe0a0;--text:#f5f0e6;--muted:#aab4c3;
+  --green:#66dfa0;--red:#ff746a
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",Arial,sans-serif;color:var(--text);background:radial-gradient(circle at 50% -10%,rgba(230,184,95,.18),transparent 35%),linear-gradient(180deg,#172231,var(--bg) 55%,#070a0e)}
+button,input{font:inherit}.app{width:min(820px,100%);margin:auto;padding:22px 16px 44px}
+.hero{display:flex;align-items:center;gap:14px;margin-bottom:14px}.badge{width:68px;height:74px;display:grid;place-items:center;border:2px solid var(--gold);border-radius:10px 10px 23px 23px;color:var(--gold2);font-weight:900;font-size:20px}.kicker{margin:0;color:var(--gold);font-size:11px;letter-spacing:.2em;font-weight:900}h1{margin:2px 0 4px;font-size:clamp(28px,7vw,42px)}.sub{margin:0;color:var(--muted);font-size:13px}.version{display:inline-block;margin-top:5px;padding:3px 7px;border:1px solid var(--gold);border-radius:999px;color:var(--gold2);font-size:10px;font-weight:800}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}.tab-btn{min-height:50px;border:1px solid var(--line);border-radius:12px;background:#202b39;color:var(--text);font-weight:900}.tab-btn.active{border-color:var(--gold);color:var(--gold2);background:linear-gradient(180deg,rgba(230,184,95,.23),rgba(230,184,95,.08))}
+.card{margin-bottom:15px;padding:17px;border:1px solid rgba(230,184,95,.28);border-radius:18px;background:linear-gradient(145deg,rgba(31,42,57,.98),rgba(18,25,35,.98));box-shadow:0 18px 42px rgba(0,0,0,.32)}
+.head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:15px}.head>div{display:flex;gap:9px;align-items:center}.step{color:var(--gold);font-weight:900;font-size:12px}h2{margin:0;font-size:18px}h2 small{display:block;color:var(--muted);font-size:12px;font-weight:500}.note{color:var(--gold2);font-size:10px;text-align:right}
+.counts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.count{height:64px;border:1px solid var(--line);border-radius:13px;background:#202b39;color:var(--text);font-size:24px;font-weight:900}.count span{display:block;color:var(--muted);font-size:10px;font-weight:500}.count.active{border-color:var(--gold);color:var(--gold2);background:linear-gradient(180deg,rgba(230,184,95,.23),rgba(230,184,95,.08))}
+.player,.pool-row{padding:13px;margin-bottom:11px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)}.player-top{margin-bottom:11px;color:var(--gold2);font-size:13px;font-weight:900}.field label{display:block;margin-bottom:5px;color:var(--muted);font-size:10px}.name-row{margin-bottom:10px}.time-row{display:grid;grid-template-columns:1fr 24px 1fr;gap:9px;align-items:end}.colon{height:51px;display:grid;place-items:center;color:var(--gold2);font-size:26px;font-weight:900}
+input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;background:#0d151f;color:var(--text);outline:none;padding:0 12px;font-size:17px}input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(230,184,95,.13)}.time-input{text-align:center;font-size:22px;font-weight:800}
+.pool-row{display:grid;grid-template-columns:46px 1.4fr .55fr 20px .55fr 42px;gap:8px;align-items:end}.select-box{height:51px;display:grid;place-items:center}.select-box input{width:24px;height:24px;accent-color:var(--gold)}.remove-btn{height:51px;border:1px solid var(--line);border-radius:11px;background:#2a1b1b;color:#ffaaa4;font-weight:900}
+.buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:15px}.btn{min-height:52px;border-radius:12px;font-weight:900}.primary{border:1px solid #f0cb7c;background:linear-gradient(180deg,#f7d890,#d39a38);color:#1a1308}.secondary{border:1px solid var(--line);background:#202b39;color:var(--text)}
+.msg{min-height:18px;margin:9px 2px 0;font-size:12px}.error{color:var(--red)}.success{color:var(--green)}
+.result{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;padding:12px;margin-bottom:9px;border:1px solid var(--line);border-radius:13px;background:#101823}.pos{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--gold);border-radius:50%;color:var(--gold2);font-weight:900}.rname{font-weight:900}.rsub{color:var(--muted);font-size:11px}.offset{color:var(--green);font-weight:900}
+.hidden{display:none!important}
+.countdown{position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;background:radial-gradient(circle at 50% 32%,rgba(230,184,95,.21),transparent 32%),linear-gradient(180deg,#121b27,#080b10)}.countdown.warning{background:radial-gradient(circle at 50% 35%,rgba(241,192,76,.30),transparent 35%),linear-gradient(180deg,#261e10,#090908)}.countdown.go{background:radial-gradient(circle at 50% 35%,rgba(102,223,160,.34),transparent 35%),linear-gradient(180deg,#10261b,#070c09)}
+.ctop{display:flex;justify-content:space-between;align-items:center;padding:18px;color:var(--gold);font-size:11px;font-weight:900}.ctop button{width:42px;height:42px;border:1px solid var(--line);border-radius:50%;background:#202b39;color:var(--text)}.cmain{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}.clabel{color:var(--gold);font-size:12px;letter-spacing:.16em;font-weight:900}#cplayer{font-size:clamp(38px,12vw,82px)}#cinstruction{color:var(--muted);font-weight:900}#cnumber{color:var(--gold2);font-size:clamp(110px,42vw,270px);line-height:1;font-weight:950}.countdown.go #cnumber{color:#8af1b9;font-size:clamp(82px,27vw,185px)}#cprogress{color:var(--muted)}
+@media(max-width:620px){.pool-row{grid-template-columns:42px 1fr 1fr 18px 1fr 40px}.pool-row .name-field{grid-column:2/7}.buttons{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="app">
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">集結倒數測試版</p><span class="version">VERSION 2.2 TEST</span></div></header>
 
+<div class="tabs">
+<button class="tab-btn active" data-tab="quick">Quick Rally · 快速集結</button>
+<button class="tab-btn" data-tab="pool">Player Pool · 玩家名單</button>
+</div>
+
+<section id="quickTab">
+<section class="card"><div class="head"><div><span class="step">01</span><h2>Rally Count<small>集結數量</small></h2></div></div>
+<div class="counts"><button class="count active" data-count="2">2<span>雙重</span></button><button class="count" data-count="3">3<span>三重</span></button><button class="count" data-count="4">4<span>四重</span></button><button class="count" data-count="5">5<span>五重</span></button></div></section>
+<section class="card"><div class="head"><div><span class="step">02</span><h2>Players<small>玩家與行軍時間</small></h2></div></div><div id="quickPlayers"></div>
+<div class="buttons"><button id="quickCalc" class="btn primary">Calculate · 計算</button><button id="quickReset" class="btn secondary">Reset · 重設</button></div><p id="quickError" class="msg error"></p></section>
+<section id="quickResultCard" class="card hidden"><div class="head"><div><span class="step">03</span><h2>Rally Order<small>集結順序</small></h2></div></div><div id="quickResults"></div><div class="buttons"><button id="quickStart" class="btn primary">Start Countdown · 開始倒數</button><button id="quickCopy" class="btn secondary">Copy · 複製</button></div></section>
+</section>
+
+<section id="poolTab" class="hidden">
+<section class="card"><div class="head"><div><span class="step">01</span><h2>Player Pool<small>建立常用玩家名單</small></h2></div><span class="note">勾選本次參加者</span></div>
+<div id="poolPlayers"></div>
+<div class="buttons"><button id="addPlayer" class="btn secondary">＋ Add Player · 新增玩家</button><button id="selectAll" class="btn secondary">Select All · 全選</button></div>
+<p class="msg success" id="saveHint"></p>
+</section>
+<section class="card"><div class="buttons"><button id="poolCalc" class="btn primary">Calculate Selected · 計算已勾選</button><button id="clearSelection" class="btn secondary">Clear Selection · 取消勾選</button></div><p id="poolError" class="msg error"></p></section>
+<section id="poolResultCard" class="card hidden"><div class="head"><div><span class="step">02</span><h2>Selected Rally Order<small>本次集結順序</small></h2></div></div><div id="poolResults"></div><div class="buttons"><button id="poolStart" class="btn primary">Start Countdown · 開始倒數</button><button id="poolCopy" class="btn secondary">Copy · 複製</button></div></section>
+</section>
+</main>
+
+<section id="countdown" class="countdown hidden"><div class="ctop"><span>RALLY COUNTDOWN</span><button id="closeCountdown">✕</button></div><div class="cmain"><p class="clabel">NEXT PLAYER · 下一位</p><h2 id="cplayer">Player</h2><p id="cinstruction">OPEN IN · 剩餘時間</p><div id="cnumber">0</div><p id="cprogress">1 / 2</p></div></section>
+
+<script>
+const $=id=>document.getElementById(id);
+let quickCount=2,quickRallies=[],poolRallies=[],activeRallies=[],timer=null;
+
+function fmt(s){return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function parse(min,sec){min=+(min||0);sec=+(sec||0);if(min<0||min>5||sec<0||sec>59)return null;return min*60+sec}
+function buildRallies(data){const sorted=[...data].sort((a,b)=>b.march-a.march),longest=sorted[0].march;return sorted.map((x,i)=>({...x,pos:i+1,offset:longest-x.march}))}
+function resultHtml(rs){return rs.map(r=>`<div class="result"><div class="pos">${r.pos}</div><div><div class="rname">${esc(r.name)}</div><div class="rsub">March ${fmt(r.march)}</div></div><div class="offset">${r.offset===0?"NOW":"+"+fmt(r.offset)}</div></div>`).join("")}
+
+document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active");$("quickTab").classList.toggle("hidden",b.dataset.tab!=="quick");$("poolTab").classList.toggle("hidden",b.dataset.tab!=="pool")});
+
+function renderQuick(){
+ $("quickPlayers").innerHTML="";
+ for(let i=0;i<quickCount;i++){const d=document.createElement("div");d.className="player";d.innerHTML=`<div class="player-top">Rally ${i+1}</div><div class="name-row field"><label>Player Name · 玩家名稱</label><input class="qname" placeholder="Player ${i+1}"></div><div class="time-row"><div class="field"><label>Minutes · 分鐘</label><input class="qmin time-input" type="tel" inputmode="numeric" maxlength="1"></div><div class="colon">:</div><div class="field"><label>Seconds · 秒數</label><input class="qsec time-input" type="tel" inputmode="numeric" maxlength="2"></div></div>`;$("quickPlayers").appendChild(d)}
+}
+document.querySelectorAll(".count").forEach(b=>b.onclick=()=>{quickCount=+b.dataset.count;document.querySelectorAll(".count").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderQuick();$("quickResultCard").classList.add("hidden")});
+$("quickCalc").onclick=()=>{try{const data=[...document.querySelectorAll("#quickPlayers .player")].map((p,i)=>{const march=parse(p.querySelector(".qmin").value,p.querySelector(".qsec").value);if(march===null)throw Error(`第 ${i+1} 位時間錯誤`);return{name:p.querySelector(".qname").value.trim()||`Player ${i+1}`,march}});quickRallies=buildRallies(data);$("quickResults").innerHTML=resultHtml(quickRallies);$("quickResultCard").classList.remove("hidden");$("quickError").textContent=""}catch(e){$("quickError").textContent=e.message}};
+$("quickReset").onclick=()=>{renderQuick();$("quickResultCard").classList.add("hidden")};
+
+let pool=JSON.parse(localStorage.getItem("rallyPlayerPool")||"null")||[
+ {name:"Player 1",min:1,sec:30,selected:true},
+ {name:"Player 2",min:1,sec:15,selected:true},
+ {name:"Player 3",min:1,sec:0,selected:false},
+ {name:"Player 4",min:0,sec:45,selected:false},
+ {name:"Player 5",min:0,sec:30,selected:false},
+ {name:"Player 6",min:0,sec:20,selected:false}
+];
+function savePool(){localStorage.setItem("rallyPlayerPool",JSON.stringify(pool));$("saveHint").textContent="Saved on this device · 已儲存在此裝置"}
+function renderPool(){
+ $("poolPlayers").innerHTML="";
+ pool.forEach((p,i)=>{const d=document.createElement("div");d.className="pool-row";d.innerHTML=`
+ <div class="select-box"><input class="pick" type="checkbox" ${p.selected?"checked":""} aria-label="select player"></div>
+ <div class="field name-field"><label>Player · 玩家</label><input class="pname" value="${esc(p.name)}"></div>
+ <div class="field"><label>Min</label><input class="pmin time-input" type="tel" inputmode="numeric" maxlength="1" value="${p.min}"></div>
+ <div class="colon">:</div>
+ <div class="field"><label>Sec</label><input class="psec time-input" type="tel" inputmode="numeric" maxlength="2" value="${String(p.sec).padStart(2,"0")}"></div>
+ <button class="remove-btn" data-remove="${i}">✕</button>`;$("poolPlayers").appendChild(d)})
+}
+$("poolPlayers").addEventListener("input",e=>{const row=e.target.closest(".pool-row");if(!row)return;const i=[...$("poolPlayers").children].indexOf(row);if(e.target.classList.contains("pick"))pool[i].selected=e.target.checked;if(e.target.classList.contains("pname"))pool[i].name=e.target.value;if(e.target.classList.contains("pmin"))pool[i].min=Math.min(5,+(e.target.value.replace(/\D/g,"")||0));if(e.target.classList.contains("psec"))pool[i].sec=Math.min(59,+(e.target.value.replace(/\D/g,"")||0));savePool()});
+$("poolPlayers").addEventListener("click",e=>{if(e.target.dataset.remove!==undefined){pool.splice(+e.target.dataset.remove,1);savePool();renderPool()}});
+$("addPlayer").onclick=()=>{pool.push({name:`Player ${pool.length+1}`,min:0,sec:0,selected:false});savePool();renderPool()};
+$("selectAll").onclick=()=>{pool.forEach(p=>p.selected=true);savePool();renderPool()};
+$("clearSelection").onclick=()=>{pool.forEach(p=>p.selected=false);savePool();renderPool();$("poolResultCard").classList.add("hidden")};
+$("poolCalc").onclick=()=>{const selected=pool.filter(p=>p.selected);if(selected.length<2){$("poolError").textContent="請至少勾選 2 位玩家";$("poolResultCard").classList.add("hidden");return}poolRallies=buildRallies(selected.map(p=>({name:p.name||"Player",march:p.min*60+p.sec})));$("poolResults").innerHTML=resultHtml(poolRallies);$("poolResultCard").classList.remove("hidden");$("poolError").textContent=""};
+
+function startCountdown(rs){activeRallies=rs;if(!rs.length)return;$("countdown").classList.remove("hidden");document.body.style.overflow="hidden";const start=performance.now();timer&&clearInterval(timer);timer=setInterval(()=>{const e=(performance.now()-start)/1000;const i=rs.findIndex(r=>r.offset>e);if(i<0){const l=rs.at(-1);if(e-l.offset<1.4){$("countdown").classList.add("go");$("cplayer").textContent=l.name;$("cinstruction").textContent="OPEN RALLY NOW · 立即開集結";$("cnumber").textContent="GO!";$("cprogress").textContent=`${rs.length}/${rs.length}`}else{$("cplayer").textContent="ALL RALLIES";$("cinstruction").textContent="COMPLETE";$("cnumber").textContent="DONE";clearInterval(timer)}return}const r=rs[i],remain=Math.ceil(r.offset-e);$("countdown").classList.toggle("warning",remain<=5);$("countdown").classList.remove("go");$("cplayer").textContent=r.name;$("cinstruction").textContent="OPEN IN · 剩餘時間";$("cnumber").textContent=remain;$("cprogress").textContent=`${i+1}/${rs.length}`},100)}
+$("quickStart").onclick=()=>startCountdown(quickRallies);$("poolStart").onclick=()=>startCountdown(poolRallies);
+$("closeCountdown").onclick=()=>{timer&&clearInterval(timer);$("countdown").classList.add("hidden");document.body.style.overflow=""};
+function copy(rs){navigator.clipboard.writeText(rs.map(r=>`${r.pos}. ${r.name} — ${r.offset===0?"NOW":"+"+fmt(r.offset)}`).join("\n"))}
+$("quickCopy").onclick=()=>copy(quickRallies);$("poolCopy").onclick=()=>copy(poolRallies);
+
+document.body.addEventListener("input",e=>{if(e.target.matches(".qmin,.qsec,.pmin,.psec")){e.target.value=e.target.value.replace(/\D/g,"")}});
+renderQuick();renderPool();
+</script>
+</body>
+</html>
