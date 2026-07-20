@@ -74,12 +74,14 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
   font-variant-numeric:tabular-nums;
 }
 
+.mini-counter{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin:14px 0 0;padding:8px 12px;color:var(--muted);font-size:11px;text-align:center}
+.mini-counter strong{margin-left:3px;color:var(--gold2);font-variant-numeric:tabular-nums}
 @media(max-width:620px){.pool-row{grid-template-columns:42px 1fr 1fr 18px 1fr 40px}.pool-row .name-field{grid-column:2/7}.buttons{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、準備倒數與進度測試版</p><span class="version">VERSION 2.4 TEST</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、準備倒數與進度測試版</p><span class="version">VERSION 2.5 TEST</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -122,6 +124,10 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 </section>
 <section class="card"><div class="buttons"><button id="poolCalc" class="btn primary">Calculate Selected · 計算已勾選</button><button id="clearSelection" class="btn secondary">Clear Selection · 取消勾選</button></div><p id="poolError" class="msg error"></p></section>
 <section id="poolResultCard" class="card hidden"><div class="head"><div><span class="step">02</span><h2>Selected Rally Order<small>本次集結順序</small></h2></div></div><div id="poolResults"></div><div class="buttons"><button id="poolStart" class="btn primary">Start Countdown · 開始倒數</button><button id="poolCopy" class="btn secondary">Copy · 複製</button></div></section>
+</section>
+<section class="mini-counter">
+  <span>👁 Visits · 瀏覽 <strong id="visitCount">--</strong></span>
+  <span>🟢 Online · 在線 <strong id="onlineCount">--</strong></span>
 </section>
 </main>
 
@@ -326,5 +332,60 @@ document.body.addEventListener("input",e=>{
 });
 renderQuick();renderPool();
 </script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { getDatabase, ref, onValue, onDisconnect, set, remove, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_PROJECT.firebaseapp.com",
+  databaseURL: "https://PASTE_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "PASTE_PROJECT",
+  storageBucket: "PASTE_PROJECT.appspot.com",
+  messagingSenderId: "PASTE_SENDER_ID",
+  appId: "PASTE_APP_ID"
+};
+
+const configured = !firebaseConfig.apiKey.startsWith("PASTE_");
+const visitEl = document.getElementById("visitCount");
+const onlineEl = document.getElementById("onlineCount");
+
+if (!configured) {
+  visitEl.textContent = "未設定";
+  onlineEl.textContent = "未設定";
+} else {
+  try {
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    const credential = await signInAnonymously(auth);
+    const uid = credential.user.uid;
+
+    const visitsRef = ref(db, "siteStats/pageViews");
+    await runTransaction(visitsRef, current => (current || 0) + 1);
+    onValue(visitsRef, snap => {
+      visitEl.textContent = Number(snap.val() || 0).toLocaleString();
+    });
+
+    const sessionId = `${uid}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const sessionRef = ref(db, `sitePresence/${sessionId}`);
+    await onDisconnect(sessionRef).remove();
+    await set(sessionRef, { uid, connectedAt: serverTimestamp() });
+
+    onValue(ref(db, "sitePresence"), snap => {
+      onlineEl.textContent = snap.exists() ? Object.keys(snap.val()).length.toLocaleString() : "0";
+    });
+
+    window.addEventListener("pagehide", () => remove(sessionRef).catch(() => {}));
+  } catch (error) {
+    console.error(error);
+    visitEl.textContent = "錯誤";
+    onlineEl.textContent = "錯誤";
+  }
+}
+</script>
+
 </body>
 </html>
