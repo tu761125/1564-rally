@@ -128,11 +128,24 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 .overlay-next-player{font-size:clamp(22px,5vw,40px);margin-top:34px}
 .overlay-after-player{text-align:center;color:var(--muted);font-size:18px;margin:8px 0 22px}
 
+
+.room-countdown-view{margin-top:14px;padding:18px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.18);text-align:center}
+.room-countdown-view h2{font-size:clamp(28px,7vw,48px);margin:6px 0}
+.room-countdown-view #roomInstruction{font-size:18px;color:var(--muted);margin:6px 0}
+.room-countdown-view #roomNumber{font-size:clamp(72px,20vw,140px);font-weight:1000;line-height:1;color:var(--gold2)}
+.room-countdown-view #roomProgress{font-size:18px;color:var(--muted)}
+.room-overlay{position:fixed;inset:0;z-index:9999;background:#050910;overflow:auto}
+.room-overlay-inner{min-height:100%;display:flex;flex-direction:column}
+.room-overlay .ctop{position:sticky;top:0;z-index:2}
+.room-overlay .cmain{flex:1}
+.room-overlay #overlayNumber{font-size:clamp(110px,32vw,240px)}
+.room-overlay .countdown-roster{width:min(900px,100%);margin:24px auto 0}
+
 </style>
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1.8 SERVER TIME FIX</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1.9 MATCH OUTSIDE</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -263,19 +276,23 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 
 <div id="roomCountdownOverlay" class="room-overlay hidden" aria-live="polite">
   <div class="room-overlay-inner">
-    <div class="room-overlay-top">
+    <div class="ctop">
       <div>
-        <small>Room · 房間</small>
-        <strong id="overlayRoomId">—</strong>
+        <span id="overlayRoomId">Room · 房間 —</span>
+        <span id="roomCountdownUtc">UTC 00:00:00</span>
       </div>
-      <button type="button" id="closeRoomOverlayBtn" class="btn secondary">Close · 關閉</button>
+      <button type="button" id="closeRoomOverlayBtn">✕</button>
     </div>
-    <div id="overlayNextPlayer" class="overlay-next-player">Next · 下一位：—</div>
-<div id="overlayRoomTimer" class="overlay-timer">00:00</div>
-<div id="overlayRoomStatus" class="overlay-status">Waiting · 等待開始</div>
-<div id="overlayAfterPlayer" class="overlay-after-player">After · 下一位之後：—</div>
-    <div id="overlayRoomRoster" class="overlay-roster"></div>
+    <div class="cmain">
+      <p class="clabel">NEXT PLAYER · 下一位</p>
+      <h2 id="overlayCurrentPlayer">—</h2>
+      <p id="overlayInstruction">WAITING · 等待開始</p>
+      <div id="overlayNumber">0</div>
+      <p id="overlayProgress">0 / 0</p>
+      <div id="overlayRoomRoster" class="countdown-roster"></div>
+    </div>
   </div>
+</div>
 </div>
 
 <section class="mini-counter">
@@ -310,6 +327,7 @@ function updateUtc(){
   $("utcClock").textContent=time;
   $("utcDate").textContent=`${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,"0")}-${String(now.getUTCDate()).padStart(2,"0")} · UTC`;
   $("countdownUtc").textContent=`UTC ${time}`;
+  const roomUtc=document.getElementById("roomCountdownUtc");if(roomUtc)roomUtc.textContent=`UTC ${time}`;
 }
 updateUtc();
 setInterval(updateUtc,250);
@@ -638,9 +656,12 @@ async function joinRoom(){
     if(!snap.exists())return msg(q("roomEntryMsg"),"Room not found · 找不到房間","error");
     const room=snap.val();
     if(await hash(pw)!==room.passwordHash)return msg(q("roomEntryMsg"),"Wrong password · 密碼錯誤","error");
-    if(Object.values(room.members||{}).some(m=>(m.playerId||"").toLowerCase()===pid.toLowerCase()))return msg(q("roomEntryMsg"),"Player ID already exists · 玩家 ID 已存在","error");
-    await set(ref(roomDb,`rooms/${rid}/members/${user.uid}`),{playerId:pid,role:"viewer",joinedAt:serverTimestamp()});
-    await enterRoom(rid,user.uid,false);
+    const isReturningHost=room.hostUid===user.uid;
+    const duplicate=Object.entries(room.members||{}).some(([key,m])=>key!==user.uid&&(m.playerId||"").toLowerCase()===pid.toLowerCase());
+    if(duplicate)return msg(q("roomEntryMsg"),"Player ID already exists · 玩家 ID 已存在","error");
+    const role=isReturningHost?"host":"viewer";
+    await set(ref(roomDb,`rooms/${rid}/members/${user.uid}`),{playerId:pid,role,joinedAt:serverTimestamp()});
+    await enterRoom(rid,user.uid,isReturningHost);
   }catch(e){console.error(e);msg(q("roomEntryMsg"),(e.code||"Firebase error")+" | "+(e.message||"Unknown error")+" · 加入失敗","error")}
 }
 
@@ -669,8 +690,9 @@ function render(room){
   q("roomMembers").innerHTML="";
   members.forEach(([key,m])=>{
     const row=document.createElement("div");row.className="member-row";
-    row.innerHTML=`<span class="member-name">${m.role==="host"?"👑 ":"🟢 "}${esc(m.playerId||"Unknown")}</span>`;
-    if(current.isHost&&m.role!=="host"){
+    const memberIsHost=key===room.hostUid||m.role==="host";
+    row.innerHTML=`<span class="member-name">${memberIsHost?"👑 ":"🟢 "}${esc(m.playerId||"Unknown")}</span>`;
+    if(current.isHost&&!memberIsHost){
       const b=document.createElement("button");b.className="btn secondary kick-btn";b.textContent="Kick · 踢出";
       b.onclick=async()=>{if(confirm(`Kick ${m.playerId}? · 確定踢出 ${m.playerId}？`))await remove(ref(roomDb,`rooms/${current.roomId}/members/${key}`))};
       row.appendChild(b);
@@ -683,52 +705,11 @@ function render(room){
   
 clearInterval(current.timer);
   const draw=()=>{
-    const now=serverNow();
-    let elapsed=0;
-    let masterRemaining=Number(room.remaining??room.totalDuration??0);
-
-    if(room.status==="running"&&room.startedAt){
-      elapsed=Math.max(0,Math.floor((now-Number(room.startedAt))/1000));
-      masterRemaining=Math.min(Number(room.totalDuration||0),Math.max(0,Number(room.totalDuration||0)-elapsed));
-    }else{
-      elapsed=Math.max(0,Number(room.totalDuration||0)-masterRemaining);
-    }
-
-    const rallies=[...(room.rallies||[])].sort((a,b)=>Number(a.launchAt||0)-Number(b.launchAt||0));
-    const pending=rallies.filter(r=>elapsed<Number(r.launchAt||0));
-    const next=pending[0]||null;
-    const after=pending[1]||null;
-    const nextRemaining=next?Math.max(0,Number(next.launchAt||0)-elapsed):0;
-
-    q("roomTimer").textContent=fmt(nextRemaining);
-    q("overlayRoomTimer").textContent=fmt(nextRemaining);
-
-    q("roomNextPlayer").textContent=next?`Next · 下一位：${next.name}`:(rallies.length?"Next · 下一位：DONE":"Next · 下一位：—");
-    q("overlayNextPlayer").textContent=next?`Next · 下一位：${next.name}`:(rallies.length?"DONE · 全部完成":"Next · 下一位：—");
-    q("overlayAfterPlayer").textContent=after?`After · 下一位之後：${after.name}`:"After · 下一位之後：—";
-
-    const statusText=
-      room.status==="running"?(next?"Running · 倒數中":"Finished · 全部完成"):
-      (!rallies.length?"Waiting · 等待設定":
-      room.status==="finished"?"Finished · 全部完成":
-      room.status==="paused"?"Paused · 已暫停":
-      "Waiting · 等待開始");
-
-    q("roomStatus").textContent=statusText;
-    q("overlayRoomStatus").textContent=statusText;
-
-    if(current.isHost && room.status==="running" && rallies.length && !next && !current.finishing){
-      current.finishing=true;
-      update(ref(roomDb,`rooms/${current.roomId}`),{
-        status:"finished",
-        remaining:0,
-        startedAt:null
-      }).finally(()=>{current.finishing=false});
-    }
-
-    updateRoomRosterTimes(room,masterRemaining);
+    const frame=buildRoomCountdownFrame(room,serverNow());
+    renderRoomCountdownFrame(frame,room);
   };
-  draw();current.timer=setInterval(draw,250);
+  draw();
+  current.timer=setInterval(draw,100);
 }
 
 
@@ -795,37 +776,98 @@ async function calculateRoomRallies(){
   msg(q("roomLiveMsg"),"Rally list calculated · 集結名單已完成計算","success");
 }
 function renderRoomRoster(room){
-  const renderTo=list=>{
-    list.innerHTML="";
-    [...(room.rallies||[])].sort((a,b)=>Number(a.launchAt||0)-Number(b.launchAt||0)).forEach(r=>{
-      const item=document.createElement("div");item.className="room-rally-item";item.dataset.id=r.id;
-      item.innerHTML=`<span class="room-rally-name">${esc(r.name)}</span><span class="room-rally-time">--</span>`;
-      list.appendChild(item);
-    });
-  };
-  renderTo(q("roomRallyRoster"));
-  renderTo(q("overlayRoomRoster"));
-  q("overlayRoomId").textContent=current.roomId||"—";
+  const rs=[...(room.rallies||[])].sort((a,b)=>Number(a.launchAt||0)-Number(b.launchAt||0));
+  const htmlRows=rs.map((r,i)=>`
+    <div class="roster-row" data-id="${esc(r.id)}">
+      <div class="roster-index">${i+1}</div>
+      <div class="roster-name">${esc(r.name)}</div>
+      <div class="roster-state">--</div>
+    </div>`).join("");
+  q("roomRallyRoster").innerHTML=htmlRows;
+  q("overlayRoomRoster").innerHTML=htmlRows;
+  q("overlayRoomId").textContent=`Room · 房間 ${current.roomId||"—"}`;
 }
-function updateRoomRosterTimes(room,masterRemaining){
+
+function buildRoomCountdownFrame(room,now){
+  const rs=[...(room.rallies||[])].sort((a,b)=>Number(a.launchAt||0)-Number(b.launchAt||0));
   const total=Number(room.totalDuration||0);
-  const elapsed=Math.max(0,total-masterRemaining);
+  const prep=Number(room.prepSeconds||0);
+  let elapsed=-prep;
+
+  if(room.status==="running"&&room.startedAt){
+    elapsed=(now-Number(room.startedAt))/1000;
+  }else if(room.status==="paused"){
+    elapsed=Math.max(0,total-Number(room.remaining??total));
+  }else if(room.status==="waiting"){
+    elapsed=-prep;
+  }
+
+  if(!rs.length){
+    return {rs,elapsed,currentIndex:-1,player:"—",instruction:"WAITING · 等待設定",number:"0",progress:"0 / 0",doneAll:false};
+  }
+
+  if(room.status==="waiting"){
+    return {rs,elapsed,currentIndex:0,player:rs[0].name,instruction:"GET READY · 準備出發",number:String(prep),progress:`1 / ${rs.length}`,doneAll:false};
+  }
+
+  if(room.status==="paused"){
+    const idx=rs.findIndex(r=>Number(r.launchAt)>elapsed);
+    const i=idx<0?rs.length-1:idx;
+    const remain=idx<0?0:Math.max(0,Math.ceil(Number(rs[i].launchAt)-elapsed));
+    return {rs,elapsed,currentIndex:i,player:idx<0?"ALL RALLIES":rs[i].name,instruction:idx<0?"COMPLETE · 全部完成":"PAUSED · 已暫停",number:idx<0?"DONE":String(remain),progress:`${Math.min(i+1,rs.length)} / ${rs.length}`,doneAll:idx<0};
+  }
+
+  if(elapsed<0){
+    return {rs,elapsed,currentIndex:0,player:rs[0].name,instruction:"GET READY · 準備出發",number:String(Math.ceil(-elapsed)),progress:`1 / ${rs.length}`,doneAll:false};
+  }
+
+  const idx=rs.findIndex(r=>Number(r.launchAt)>elapsed);
+  if(idx<0){
+    const last=rs.at(-1);
+    if(elapsed-Number(last.launchAt)<1.4){
+      return {rs,elapsed,currentIndex:rs.length-1,player:last.name,instruction:"OPEN RALLY NOW · 立即開集結",number:"GO!",progress:`${rs.length} / ${rs.length}`,doneAll:false};
+    }
+    return {rs,elapsed,currentIndex:rs.length,player:"ALL RALLIES",instruction:"COMPLETE · 全部完成",number:"DONE",progress:`${rs.length} / ${rs.length}`,doneAll:true};
+  }
+
+  const r=rs[idx];
+  return {
+    rs,elapsed,currentIndex:idx,player:r.name,
+    instruction:"OPEN IN · 剩餘時間",
+    number:String(Math.max(0,Math.ceil(Number(r.launchAt)-elapsed))),
+    progress:`${idx+1} / ${rs.length}`,
+    doneAll:false
+  };
+}
+
+function renderRoomCountdownFrame(frame,room){
+  q("roomCurrentPlayer").textContent=frame.player;
+  q("overlayCurrentPlayer").textContent=frame.player;
+  q("roomInstruction").textContent=frame.instruction;
+  q("overlayInstruction").textContent=frame.instruction;
+  q("roomNumber").textContent=frame.number;
+  q("overlayNumber").textContent=frame.number;
+  q("roomProgress").textContent=frame.progress;
+  q("overlayProgress").textContent=frame.progress;
+
   ["roomRallyRoster","overlayRoomRoster"].forEach(listId=>{
     const list=q(listId);
-    [...(room.rallies||[])].sort((a,b)=>Number(a.launchAt||0)-Number(b.launchAt||0)).forEach(r=>{
-      const item=list.querySelector(`[data-id="${CSS.escape(r.id)}"]`);
-      if(!item)return;
-      const remain=Math.max(0,Number(r.launchAt||0)-elapsed);
-      const done=elapsed>=Number(r.launchAt||0);
-      item.classList.toggle("done",done);
-      item.querySelector(".room-rally-time").textContent=done?"DONE · 完成":fmt(remain);
+    frame.rs.forEach((r,i)=>{
+      const row=list.querySelector(`[data-id="${CSS.escape(r.id)}"]`);
+      if(!row)return;
+      const remaining=Math.max(0,Math.ceil(Number(r.launchAt)-frame.elapsed));
+      let state=`${remaining}s · ${remaining}秒`;
+      row.classList.remove("current","done");
+      if(frame.doneAll||frame.elapsed>Number(r.launchAt)+1.3){
+        state="DONE · 已出發";
+        row.classList.add("done");
+      }else if(i===frame.currentIndex){
+        state=remaining===0?"GO! · 出發":`${remaining}s · ${remaining}秒`;
+        row.classList.add("current");
+      }
+      row.querySelector(".roster-state").textContent=state;
     });
   });
-  q("overlayRoomTimer").textContent=fmt(masterRemaining);
-  q("overlayRoomStatus").textContent=
-    room.status==="running"?(masterRemaining>0?"Running · 倒數中":"Finished · 已完成"):
-    room.status==="finished"?"Finished · 全部完成":
-      room.status==="paused"?"Paused · 已暫停":"Waiting · 等待開始";
 }
 async function startRoom(){
   if(!current.isHost)return;
