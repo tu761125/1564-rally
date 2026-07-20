@@ -145,7 +145,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.2.0 DISPLAY FIX</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.2.1 RECOVERY FIX</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -267,6 +267,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
     <button type="button" id="roomPauseBtn" class="btn secondary">Pause · 暫停</button>
     <button type="button" id="roomResetBtn" class="btn secondary">Reset Countdown · 重設倒數</button>
 <button type="button" id="roomResetAllBtn" class="btn secondary">Reset Everything · 全部重設</button>
+<button type="button" id="roomRecoverBtn" class="btn secondary">Recover Countdown · 修復倒數</button>
   </div>
 </div>
 </div>
@@ -588,7 +589,7 @@ onValue(ref(roomDb,".info/serverTimeOffset"),snap=>{
 const serverNow=()=>Date.now()+firebaseServerOffset;
 const q=id=>document.getElementById(id);
 
-let current={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null,finishing:false};
+let current={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null,finishing:false,renderVersion:0};
 
 const cleanRoom=v=>v.trim().toUpperCase();
 const clean=v=>v.trim();
@@ -667,6 +668,9 @@ async function joinRoom(){
 }
 
 async function enterRoom(rid,uid,isHost){
+  clearInterval(current.timer);
+  if(typeof current.roomUnsub==="function")current.roomUnsub();
+  if(typeof current.memberUnsub==="function")current.memberUnsub();
   current.roomId=rid;current.uid=uid;current.isHost=isHost;
   q("roomEntry").classList.add("hidden");q("roomLive").classList.remove("hidden");
   q("liveRoomId").textContent=rid;
@@ -701,11 +705,15 @@ function render(room){
     q("roomMembers").appendChild(row);
   });
   current.roomData=room;
+  current.renderVersion=(current.renderVersion||0)+1;
+  const renderVersion=current.renderVersion;
   if(current.isHost && room.prepSeconds!==undefined) q("roomPrepSeconds").value=room.prepSeconds;
   renderRoomRoster(room);
   
 clearInterval(current.timer);
+  current.timer=null;
   const draw=()=>{
+    if(renderVersion!==current.renderVersion)return;
     try{
       const frame=buildRoomCountdownFrame(room,serverNow());
       renderRoomCountdownFrame(frame,room);
@@ -917,6 +925,59 @@ async function resetRoom(){
   await update(ref(roomDb,`rooms/${current.roomId}`),{remaining:Number(r.totalDuration||0),startedAt:null,status:"waiting"});
 }
 
+
+async function recoverRoomCountdown(){
+  if(!current.isHost || !current.roomId)return;
+  if(!confirm("Recover the countdown and return to waiting? · 修復倒數並回到等待開始嗎？"))return;
+
+  clearInterval(current.timer);
+  current.timer=null;
+
+  const snap=await get(ref(roomDb,`rooms/${current.roomId}`));
+  if(!snap.exists()){
+    return msg(q("roomLiveMsg"),"Room no longer exists · 房間已不存在","error");
+  }
+
+  const room=snap.val();
+  const rallies=Array.isArray(room.rallies) ? room.rallies : Object.values(room.rallies||{});
+  const totalDuration=Number(room.totalDuration||0);
+
+  await update(ref(roomDb,`rooms/${current.roomId}`),{
+    rallies,
+    totalDuration,
+    remaining:totalDuration,
+    startedAt:null,
+    status:"waiting",
+    recoveredAt:serverTimestamp()
+  });
+
+  const recoveredRoom={
+    ...room,
+    rallies,
+    totalDuration,
+    remaining:totalDuration,
+    startedAt:null,
+    status:"waiting"
+  };
+
+  current.roomData=recoveredRoom;
+  renderRoomRoster(recoveredRoom);
+  renderRoomCountdownFrame(buildRoomCountdownFrame(recoveredRoom,serverNow()),recoveredRoom);
+
+  const draw=()=>{
+    try{
+      const frame=buildRoomCountdownFrame(recoveredRoom,serverNow());
+      renderRoomCountdownFrame(frame,recoveredRoom);
+    }catch(error){
+      console.error("Recovered countdown render error:",error);
+    }
+  };
+  draw();
+  current.timer=setInterval(draw,100);
+
+  msg(q("roomLiveMsg"),"Countdown recovered. Press Start when ready · 倒數已修復，準備好後按開始","success");
+}
+
 async function resetEverything(){
   if(!current.isHost)return;
   if(!confirm("Reset all room rally settings? · 確定要全部重設房間集結設定嗎？"))return;
@@ -956,7 +1017,7 @@ function leaveUi(){
   clearInterval(current.timer);
   if(typeof current.roomUnsub==="function")current.roomUnsub();
   if(typeof current.memberUnsub==="function")current.memberUnsub();
-  current={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null,finishing:false};
+  current={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null,finishing:false,renderVersion:0};
   q("roomLive").classList.add("hidden");q("roomEntry").classList.remove("hidden");
   q("roomMembers").innerHTML="";
 }
@@ -981,6 +1042,7 @@ function initializeRoomUi(){
     ["roomSelectAllBtn", selectAllRoomPlayers],
     ["roomCalculateBtn", calculateRoomRallies],
     ["roomResetAllBtn", resetEverything],
+    ["roomRecoverBtn", recoverRoomCountdown],
     ["roomFullscreenBtn", openRoomOverlay],
     ["closeRoomOverlayBtn", closeRoomOverlay]
   ];
