@@ -1,8 +1,9 @@
-# v2.5.1 Firebase Diagnostic
+# 1564 Rally Timer v2.5.2 Firebase Ready
 
-此版本會在網站底部直接顯示 Firebase 錯誤代碼與訊息。
+此版本已填入 Firebase Web 設定。
 
-上傳覆蓋 test/index.html 後，重新開啟：
-https://tu761125.github.io/1564-rally/test/?v=251
-
-將底部 Firebase Error 的文字或截圖提供給我，即可精確判斷問題。
+1. 解壓縮。
+2. 上傳 index.html 覆蓋 GitHub 的 test/index.html。
+3. Commit changes。
+4. 開啟 https://tu761125.github.io/1564-rally/test/?v=252
+5. 若仍有問題，頁面底部會顯示 Firebase 錯誤代碼。
