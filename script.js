@@ -51,16 +51,23 @@ document.querySelectorAll(".count-btn").forEach((button) => {
 
 function parseMarchTime(value) {
   const trimmed = value.trim();
-  const match = trimmed.match(/^(\d{1,2}):([0-5]\d)$/);
 
-  if (!match) return null;
+  // 支援 mm:ss，例如 1:30
+  const timeMatch = trimmed.match(/^(\d{1,2}):([0-5]\d)$/);
+  if (timeMatch) {
+    const minutes = Number(timeMatch[1]);
+    const seconds = Number(timeMatch[2]);
+    const total = minutes * 60 + seconds;
+    return total <= 300 ? total : null;
+  }
 
-  const minutes = Number(match[1]);
-  const seconds = Number(match[2]);
-  const total = minutes * 60 + seconds;
+  // 也支援直接輸入秒數，例如 90
+  if (/^\d{1,3}$/.test(trimmed)) {
+    const total = Number(trimmed);
+    return total <= 300 ? total : null;
+  }
 
-  if (total < 0 || total > 300) return null;
-  return total;
+  return null;
 }
 
 function formatTime(totalSeconds) {
@@ -81,7 +88,7 @@ function collectPlayers() {
     const marchSeconds = parseMarchTime(marchInput.value);
 
     if (marchSeconds === null) {
-      throw new Error(`請檢查第 ${i + 1} 位的行軍時間，格式例如 1:30。`);
+      throw new Error(`請檢查第 ${i + 1} 位的行軍時間，可輸入 1:30 或 90。`);
     }
 
     players.push({ name, marchSeconds });
