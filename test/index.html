@@ -61,12 +61,25 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 .roster-row.current{background:rgba(230,184,95,.10);border-radius:9px}
 .roster-row.current .roster-index,.roster-row.current .roster-state{color:var(--gold2);border-color:var(--gold)}
 
+
+.reset-all-btn{
+  width:100%;margin-top:13px;border:1px solid #a4514b;
+  background:linear-gradient(180deg,#4a2828,#2b1919);color:#ffc1bc
+}
+.roster-row{
+  grid-template-columns:32px 1fr minmax(105px,auto);
+}
+.roster-state{
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+
 @media(max-width:620px){.pool-row{grid-template-columns:42px 1fr 1fr 18px 1fr 40px}.pool-row .name-field{grid-column:2/7}.buttons{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單與準備倒數測試版</p><span class="version">VERSION 2.3 TEST</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、準備倒數與進度測試版</p><span class="version">VERSION 2.4 TEST</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -90,6 +103,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
     <input id="prepSeconds" type="tel" inputmode="numeric" maxlength="2" value="3" aria-label="Preparation seconds">
     <span>seconds · 秒</span>
   </div>
+  <button id="resetAll" class="btn reset-all-btn">Reset Everything · 全部重置</button>
 </section>
 
 <section id="quickTab">
@@ -158,12 +172,12 @@ $("quickCalc").onclick=()=>{try{const data=[...document.querySelectorAll("#quick
 $("quickReset").onclick=()=>{renderQuick();$("quickResultCard").classList.add("hidden")};
 
 let pool=JSON.parse(localStorage.getItem("rallyPlayerPool")||"null")||[
- {name:"Player 1",min:1,sec:30,selected:true},
- {name:"Player 2",min:1,sec:15,selected:true},
- {name:"Player 3",min:1,sec:0,selected:false},
- {name:"Player 4",min:0,sec:45,selected:false},
- {name:"Player 5",min:0,sec:30,selected:false},
- {name:"Player 6",min:0,sec:20,selected:false}
+ {name:"Player 1",min:0,sec:0,selected:false},
+ {name:"Player 2",min:0,sec:0,selected:false},
+ {name:"Player 3",min:0,sec:0,selected:false},
+ {name:"Player 4",min:0,sec:0,selected:false},
+ {name:"Player 5",min:0,sec:0,selected:false},
+ {name:"Player 6",min:0,sec:0,selected:false}
 ];
 function savePool(){localStorage.setItem("rallyPlayerPool",JSON.stringify(pool));$("saveHint").textContent="Saved on this device · 已儲存在此裝置"}
 function renderPool(){
@@ -183,17 +197,25 @@ $("selectAll").onclick=()=>{pool.forEach(p=>p.selected=true);savePool();renderPo
 $("clearSelection").onclick=()=>{pool.forEach(p=>p.selected=false);savePool();renderPool();$("poolResultCard").classList.add("hidden")};
 $("poolCalc").onclick=()=>{const selected=pool.filter(p=>p.selected);if(selected.length<2){$("poolError").textContent="請至少勾選 2 位玩家";$("poolResultCard").classList.add("hidden");return}poolRallies=buildRallies(selected.map(p=>({name:p.name||"Player",march:p.min*60+p.sec})));$("poolResults").innerHTML=resultHtml(poolRallies);$("poolResultCard").classList.remove("hidden");$("poolError").textContent=""};
 
-function renderRoster(rs,currentIndex,doneAll=false){
+function renderRoster(rs,currentIndex,elapsed,doneAll=false){
   $("countdownRoster").innerHTML=rs.map((r,i)=>{
-    let state="WAITING · 等待";
+    const remaining=Math.max(0,Math.ceil(r.offset-elapsed));
+    let state=`${remaining}s · ${remaining}秒`;
     let cls="";
-    if(doneAll || i<currentIndex){state="DONE · 已出發";cls="done"}
-    else if(i===currentIndex){state="NEXT · 下一位";cls="current"}
+
+    if(doneAll || elapsed>r.offset+1.3){
+      state="DONE · 已出發";
+      cls="done";
+    }else if(i===currentIndex){
+      state=remaining===0 ? "GO! · 出發" : `${remaining}s · ${remaining}秒`;
+      cls="current";
+    }
+
     return `<div class="roster-row ${cls}">
       <div class="roster-index">${i+1}</div>
       <div class="roster-name">${esc(r.name)}</div>
       <div class="roster-state">${state}</div>
-    </div>`
+    </div>`;
   }).join("");
 }
 
@@ -207,7 +229,7 @@ function startCountdown(rs){
   document.body.style.overflow="hidden";
   const start=performance.now()+prep*1000;
   timer&&clearInterval(timer);
-  renderRoster(rs,0);
+  renderRoster(rs,0,-prep);
 
   timer=setInterval(()=>{
     const e=(performance.now()-start)/1000;
@@ -218,7 +240,7 @@ function startCountdown(rs){
       $("cinstruction").textContent="GET READY · 準備出發";
       $("cnumber").textContent=Math.ceil(-e);
       $("cprogress").textContent=`Preparation · 準備 ${prep}s`;
-      renderRoster(rs,0);
+      renderRoster(rs,0,-prep);
       return;
     }
 
@@ -233,13 +255,13 @@ function startCountdown(rs){
         $("cinstruction").textContent="OPEN RALLY NOW · 立即開集結";
         $("cnumber").textContent="GO!";
         $("cprogress").textContent=`${rs.length}/${rs.length}`;
-        renderRoster(rs,rs.length-1);
+        renderRoster(rs,rs.length-1,e);
       }else{
         $("cplayer").textContent="ALL RALLIES";
         $("cinstruction").textContent="COMPLETE · 全部完成";
         $("cnumber").textContent="DONE";
         $("cprogress").textContent=`${rs.length}/${rs.length}`;
-        renderRoster(rs,rs.length,true);
+        renderRoster(rs,rs.length,e,true);
         clearInterval(timer);
       }
       return;
@@ -252,9 +274,45 @@ function startCountdown(rs){
     $("cinstruction").textContent="OPEN IN · 剩餘時間";
     $("cnumber").textContent=remain;
     $("cprogress").textContent=`${i+1}/${rs.length}`;
-    renderRoster(rs,i);
+    renderRoster(rs,i,e);
   },100);
 }
+
+function resetEverything(){
+  const confirmed=window.confirm("確定要重置所有資料嗎？\\nReset all players, selections and settings?");
+  if(!confirmed)return;
+
+  timer&&clearInterval(timer);
+  $("countdown").classList.add("hidden");
+  document.body.style.overflow="";
+
+  quickCount=2;
+  document.querySelectorAll(".count").forEach(b=>b.classList.toggle("active",+b.dataset.count===2));
+  quickRallies=[];
+  poolRallies=[];
+  activeRallies=[];
+  $("prepSeconds").value="3";
+  $("quickResultCard").classList.add("hidden");
+  $("poolResultCard").classList.add("hidden");
+  $("quickError").textContent="";
+  $("poolError").textContent="";
+  $("saveHint").textContent="";
+
+  pool=[
+    {name:"Player 1",min:0,sec:0,selected:false},
+    {name:"Player 2",min:0,sec:0,selected:false},
+    {name:"Player 3",min:0,sec:0,selected:false},
+    {name:"Player 4",min:0,sec:0,selected:false},
+    {name:"Player 5",min:0,sec:0,selected:false},
+    {name:"Player 6",min:0,sec:0,selected:false}
+  ];
+
+  localStorage.removeItem("rallyPlayerPool");
+  renderQuick();
+  renderPool();
+}
+$("resetAll").onclick=resetEverything;
+
 $("quickStart").onclick=()=>startCountdown(quickRallies);$("poolStart").onclick=()=>startCountdown(poolRallies);
 $("closeCountdown").onclick=()=>{timer&&clearInterval(timer);$("countdown").classList.add("hidden");document.body.style.overflow=""};
 function copy(rs){navigator.clipboard.writeText(rs.map(r=>`${r.pos}. ${r.name} — ${r.offset===0?"NOW":"+"+fmt(r.offset)}`).join("\n"))}
