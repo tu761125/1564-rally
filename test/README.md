@@ -1,24 +1,15 @@
-# 1564 Rally v3.2.1 Recovery Fix
+# 1564 Rally v3.2.4 Copy Without Preparation
 
-新增房長專用按鈕：
+修正：
+- 複製計算清單時，自動扣除準備秒數。
+- 畫面上的實際倒數與同步邏輯不變。
 
-Recover Countdown · 修復倒數
+範例：
+準備秒數 3 秒，原計算結果為：
+3、13、23、33、43
 
-用途：
-- 房長退出後重新加入，若畫面在「準備／完成」之間跳動，可按此按鈕。
-- 停止所有舊倒數計時器。
-- 強制將 Firebase 房間狀態改回 Waiting。
-- 清除 startedAt。
-- 將 remaining 恢復為完整倒數時間。
-- 保留玩家名單、分鐘秒數、出發順序及房內成員。
-- 修復後房長重新按 Start 即可。
+複製結果改為：
+0、10、20、30、40
 
-同時新增：
-- 每次重新進入房間會先取消舊 Firebase 監聽與舊計時器。
-- 使用 renderVersion 防止舊快照繼續更新畫面。
-
-## 上傳
-1. 將 index.html 覆蓋 GitHub 的 test/index.html。
-2. Firebase Rules 不需要修改。
-3. 開啟：
-https://tu761125.github.io/1564-rally/test/?v=321
+測試網址：
+https://tu761125.github.io/1564-rally/test/?v=324

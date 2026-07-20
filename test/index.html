@@ -145,7 +145,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.2.1 RECOVERY FIX</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.2.4 COPY WITHOUT PREP</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -250,6 +250,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
     <button type="button" id="roomAddPlayerBtn" class="btn secondary">+ Add Player · 新增玩家</button>
     <button type="button" id="roomSelectAllBtn" class="btn secondary">Select All · 全選</button>
     <button type="button" id="roomCalculateBtn" class="btn primary">Calculate Selected · 計算已勾選</button>
+<button type="button" id="roomCopyListBtn" class="btn secondary">Copy Calculated List · 複製計算清單</button>
   </div>
 
   <div id="roomCountdownSummary" class="room-countdown-summary room-countdown-view">
@@ -802,6 +803,54 @@ async function calculateRoomRallies(){
   renderRoomCountdownFrame(buildRoomCountdownFrame(calculatedRoom,serverNow()),calculatedRoom);
   msg(q("roomLiveMsg"),"Rally list calculated · 集結名單已完成計算","success");
 }
+
+async function copyCalculatedRoomList(){
+  const room=current.roomData;
+  const rallies=[...(room?.rallies||[])].sort((a,b)=>Number(a.launchAt||0)-Number(b.launchAt||0));
+
+  if(!rallies.length){
+    return msg(q("roomLiveMsg"),"Calculate selected players first · 請先計算已勾選玩家","error");
+  }
+
+  const lines=[
+    `Room · 房間：${current.roomId||"—"}`,
+    `Preparation · 準備秒數：${Number(room.prepSeconds||0)}s`,
+    "",
+    ...rallies.map((r,index)=>{
+      const adjustedSeconds=Math.max(0,Number(r.launchAt||0)-Number(room.prepSeconds||0));
+      return `${index+1}. ${r.name} — ${adjustedSeconds}s`;
+    })
+  ];
+
+  const text=lines.join("\n");
+
+  try{
+    await navigator.clipboard.writeText(text);
+    msg(q("roomLiveMsg"),"Calculated list copied · 計算清單已複製","success");
+  }catch(error){
+    console.error("Clipboard copy failed:",error);
+
+    const textarea=document.createElement("textarea");
+    textarea.value=text;
+    textarea.style.position="fixed";
+    textarea.style.opacity="0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    const copied=document.execCommand("copy");
+    textarea.remove();
+
+    msg(
+      q("roomLiveMsg"),
+      copied
+        ?"Calculated list copied · 計算清單已複製"
+        :"Copy failed. Please try again · 複製失敗，請再試一次",
+      copied?"success":"error"
+    );
+  }
+}
+
 function renderRoomRoster(room){
   const rs=[...(room.rallies||[])].sort((a,b)=>Number(a.launchAt||0)-Number(b.launchAt||0));
   const htmlRows=rs.map((r,i)=>`
@@ -819,14 +868,14 @@ function buildRoomCountdownFrame(room,now){
   const rs=[...(room.rallies||[])].sort((a,b)=>Number(a.launchAt||0)-Number(b.launchAt||0));
   const total=Number(room.totalDuration||0);
   const prep=Number(room.prepSeconds||0);
-  let elapsed=-prep;
+  let elapsed=0;
 
   if(room.status==="running"&&room.startedAt){
-    elapsed=(now-Number(room.startedAt))/1000;
+    elapsed=Math.max(0,(now-Number(room.startedAt))/1000);
   }else if(room.status==="paused"){
     elapsed=Math.max(0,total-Number(room.remaining??total));
   }else if(room.status==="waiting"){
-    elapsed=-prep;
+    elapsed=0;
   }
 
   if(!rs.length){
@@ -842,10 +891,6 @@ function buildRoomCountdownFrame(room,now){
     const i=idx<0?rs.length-1:idx;
     const remain=idx<0?0:Math.max(0,Math.ceil(Number(rs[i].launchAt)-elapsed));
     return {rs,elapsed,currentIndex:i,player:idx<0?"ALL RALLIES":rs[i].name,instruction:idx<0?"COMPLETE · 全部完成":"PAUSED · 已暫停",number:idx<0?"DONE":String(remain),progress:`${Math.min(i+1,rs.length)} / ${rs.length}`,doneAll:idx<0};
-  }
-
-  if(elapsed<0){
-    return {rs,elapsed,currentIndex:0,player:rs[0].name,instruction:"GET READY · 準備出發",number:String(Math.ceil(-elapsed)),progress:`1 / ${rs.length}`,doneAll:false};
   }
 
   const idx=rs.findIndex(r=>Number(r.launchAt)>elapsed);
@@ -1041,6 +1086,7 @@ function initializeRoomUi(){
     ["roomAddPlayerBtn", addRoomPlayer],
     ["roomSelectAllBtn", selectAllRoomPlayers],
     ["roomCalculateBtn", calculateRoomRallies],
+    ["roomCopyListBtn", copyCalculatedRoomList],
     ["roomResetAllBtn", resetEverything],
     ["roomRecoverBtn", recoverRoomCountdown],
     ["roomFullscreenBtn", openRoomOverlay],
