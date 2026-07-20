@@ -81,7 +81,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、準備倒數與進度測試版</p><span class="version">VERSION 2.5 TEST</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、準備倒數與進度測試版</p><span class="version">VERSION 2.5.1 DIAGNOSTIC</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -339,17 +339,14 @@ import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/1
 import { getDatabase, ref, onValue, onDisconnect, set, remove, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDWGzhjYHMbpF7rAL06NAljkMqWLY_qrsA",
-  authDomain: "rally-12ebd.firebaseapp.com",
-  databaseURL: "https://rally-12ebd-default-rtdb.asia-southeast1.firebasedatabase.app/",
-  projectId: "rally-12ebd",
-  storageBucket: "rally-12ebd.firebasestorage.app",
-  messagingSenderId: "32423245045",
-  appId: "1:32423245045:web:29980b811c50f7850881bc",
-  measurementId: "G-5NR7RBEQKW"
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_PROJECT.firebaseapp.com",
+  databaseURL: "https://PASTE_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "PASTE_PROJECT",
+  storageBucket: "PASTE_PROJECT.appspot.com",
+  messagingSenderId: "PASTE_SENDER_ID",
+  appId: "PASTE_APP_ID"
 };
-
-
 
 const configured = !firebaseConfig.apiKey.startsWith("PASTE_");
 const visitEl = document.getElementById("visitCount");
@@ -383,9 +380,18 @@ if (!configured) {
 
     window.addEventListener("pagehide", () => remove(sessionRef).catch(() => {}));
   } catch (error) {
-    console.error(error);
-    visitEl.textContent = "錯誤";
-    onlineEl.textContent = "錯誤";
+    console.error("Firebase counter error:", error);
+    const code = error?.code || "unknown";
+    const message = error?.message || "Unknown Firebase error";
+    visitEl.textContent = code;
+    onlineEl.textContent = "查看下方";
+
+    const diagnostic = document.createElement("div");
+    diagnostic.style.cssText = "max-width:760px;margin:8px auto 20px;padding:10px 12px;border:1px solid #a4514b;border-radius:10px;background:#2b1919;color:#ffc1bc;font-size:11px;overflow-wrap:anywhere";
+    diagnostic.innerHTML = "<strong>Firebase Error：</strong><br>" +
+      String(code).replace(/</g,"&lt;") + "<br>" +
+      String(message).replace(/</g,"&lt;");
+    document.querySelector(".mini-counter")?.insertAdjacentElement("afterend", diagnostic);
   }
 }
 </script>
