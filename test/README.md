@@ -1,26 +1,19 @@
-# 1564 Rally v3.1.9 Match Outside
+# 1564 Rally v3.2.0 Display Fix
 
-修正內容：
-
-1. 房間小畫面與全畫面倒數，改成和外部 Player Pool 同一套顯示與邏輯：
-   - NEXT PLAYER · 下一位
-   - 玩家名稱
-   - GET READY / OPEN IN / GO! / COMPLETE
-   - 大型秒數或 GO! / DONE
-   - 目前進度
-   - 編號玩家名單
-   - current / done 狀態
-
-2. 房長離開後，使用同一台裝置重新加入：
-   - 依 Firebase hostUid 自動恢復房長身分
-   - 恢復編輯、開始、暫停、重設及踢人權限
-
-3. 移除「完成後反覆寫入 Firebase 狀態」：
-   - 不再出現 Waiting · 等待開始 與 Finished · 全部完成來回跳
-   - 小畫面與大畫面共用同一個 frame，不會互相覆蓋秒數
+修正：
+- 房間小畫面改成真正與外部 Player Pool 相同的 HTML 欄位。
+- 修正程式更新不存在的舊欄位，造成計算後停止執行。
+- 按下 Calculate Selected 後立即顯示：
+  - 下一位玩家
+  - 準備秒數
+  - 目前進度
+  - 玩家出發順序
+- Firebase 回傳後持續同步小畫面與全畫面。
+- 加入防呆，單一顯示元件問題不再讓整個倒數停止。
+- 若仍有顯示錯誤，會在房間下方直接顯示錯誤文字。
 
 ## 上傳
 1. 將 index.html 覆蓋 GitHub 的 test/index.html。
 2. Firebase Rules 不需要修改。
-3. 建議先關閉舊頁面，再用新網址建立新房間測試：
-https://tu761125.github.io/1564-rally/test/?v=319
+3. 關閉舊分頁後開啟：
+https://tu761125.github.io/1564-rally/test/?v=320

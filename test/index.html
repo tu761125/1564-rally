@@ -145,7 +145,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1.9 MATCH OUTSIDE</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.2.0 DISPLAY FIX</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -252,11 +252,13 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
     <button type="button" id="roomCalculateBtn" class="btn primary">Calculate Selected · 計算已勾選</button>
   </div>
 
-  <div id="roomCountdownSummary" class="room-countdown-summary">
-    <div id="roomNextPlayer" class="room-next-player">Next · 下一位：—</div>
-<div id="roomTimer" class="room-timer">00:00</div>
-<p id="roomStatus" class="room-status">Waiting · 等待開始</p>
-    <div id="roomRallyRoster" class="room-rally-roster"></div>
+  <div id="roomCountdownSummary" class="room-countdown-summary room-countdown-view">
+    <p class="clabel">NEXT PLAYER · 下一位</p>
+    <h2 id="roomCurrentPlayer">—</h2>
+    <p id="roomInstruction">WAITING · 等待開始</p>
+    <div id="roomNumber">0</div>
+    <p id="roomProgress">0 / 0</p>
+    <div id="roomRallyRoster" class="countdown-roster"></div>
   </div>
 
   <button type="button" id="roomFullscreenBtn" class="btn secondary">Fullscreen Countdown · 全畫面倒數</button>
@@ -292,7 +294,6 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
       <div id="overlayRoomRoster" class="countdown-roster"></div>
     </div>
   </div>
-</div>
 </div>
 
 <section class="mini-counter">
@@ -705,8 +706,14 @@ function render(room){
   
 clearInterval(current.timer);
   const draw=()=>{
-    const frame=buildRoomCountdownFrame(room,serverNow());
-    renderRoomCountdownFrame(frame,room);
+    try{
+      const frame=buildRoomCountdownFrame(room,serverNow());
+      renderRoomCountdownFrame(frame,room);
+    }catch(error){
+      console.error("Room countdown render error:",error);
+      msg(q("roomLiveMsg"),`${error.message||error} · 房間倒數顯示錯誤`,"error");
+      clearInterval(current.timer);
+    }
   };
   draw();
   current.timer=setInterval(draw,100);
@@ -765,6 +772,15 @@ async function calculateRoomRallies(){
     travel:p.travel,
     launchAt:maxTravel-p.travel+prep
   }));
+  const calculatedRoom={
+    ...(current.roomData||{}),
+    prepSeconds:prep,
+    rallies,
+    totalDuration,
+    remaining:totalDuration,
+    startedAt:null,
+    status:"waiting"
+  };
   await update(ref(roomDb,`rooms/${current.roomId}`),{
     prepSeconds:prep,
     rallies,
@@ -773,6 +789,9 @@ async function calculateRoomRallies(){
     startedAt:null,
     status:"waiting"
   });
+  current.roomData=calculatedRoom;
+  renderRoomRoster(calculatedRoom);
+  renderRoomCountdownFrame(buildRoomCountdownFrame(calculatedRoom,serverNow()),calculatedRoom);
   msg(q("roomLiveMsg"),"Rally list calculated · 集結名單已完成計算","success");
 }
 function renderRoomRoster(room){
@@ -840,18 +859,23 @@ function buildRoomCountdownFrame(room,now){
   };
 }
 
+function setRoomText(id,value){
+  const el=q(id);
+  if(el)el.textContent=value;
+}
 function renderRoomCountdownFrame(frame,room){
-  q("roomCurrentPlayer").textContent=frame.player;
-  q("overlayCurrentPlayer").textContent=frame.player;
-  q("roomInstruction").textContent=frame.instruction;
-  q("overlayInstruction").textContent=frame.instruction;
-  q("roomNumber").textContent=frame.number;
-  q("overlayNumber").textContent=frame.number;
-  q("roomProgress").textContent=frame.progress;
-  q("overlayProgress").textContent=frame.progress;
+  setRoomText("roomCurrentPlayer",frame.player);
+  setRoomText("overlayCurrentPlayer",frame.player);
+  setRoomText("roomInstruction",frame.instruction);
+  setRoomText("overlayInstruction",frame.instruction);
+  setRoomText("roomNumber",frame.number);
+  setRoomText("overlayNumber",frame.number);
+  setRoomText("roomProgress",frame.progress);
+  setRoomText("overlayProgress",frame.progress);
 
   ["roomRallyRoster","overlayRoomRoster"].forEach(listId=>{
     const list=q(listId);
+    if(!list)return;
     frame.rs.forEach((r,i)=>{
       const row=list.querySelector(`[data-id="${CSS.escape(r.id)}"]`);
       if(!row)return;
@@ -865,7 +889,8 @@ function renderRoomCountdownFrame(frame,room){
         state=remaining===0?"GO! · 出發":`${remaining}s · ${remaining}秒`;
         row.classList.add("current");
       }
-      row.querySelector(".roster-state").textContent=state;
+      const stateEl=row.querySelector(".roster-state");
+      if(stateEl)stateEl.textContent=state;
     });
   });
 }
