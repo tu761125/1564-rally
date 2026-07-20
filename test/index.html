@@ -99,7 +99,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1 ROOM TEST</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1.1 ROOM DIAGNOSTIC</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -540,7 +540,7 @@ async function createRoom(){
       members:{[user.uid]:{playerId:pid,role:"host",joinedAt:serverTimestamp()}}
     });
     await enterRoom(rid,user.uid,true);
-  }catch(e){console.error(e);msg(q("roomEntryMsg"),(e.code||"Firebase error")+" · 建立失敗","error")}
+  }catch(e){console.error(e);msg(q("roomEntryMsg"),(e.code||"Firebase error")+" | "+(e.message||"Unknown error")+" · 建立失敗","error")}
 }
 
 async function joinRoom(){
@@ -554,7 +554,7 @@ async function joinRoom(){
     if(Object.values(room.members||{}).some(m=>(m.playerId||"").toLowerCase()===pid.toLowerCase()))return msg(q("roomEntryMsg"),"Player ID already exists · 玩家 ID 已存在","error");
     await set(ref(roomDb,`rooms/${rid}/members/${user.uid}`),{playerId:pid,role:"viewer",joinedAt:serverTimestamp()});
     await enterRoom(rid,user.uid,false);
-  }catch(e){console.error(e);msg(q("roomEntryMsg"),(e.code||"Firebase error")+" · 加入失敗","error")}
+  }catch(e){console.error(e);msg(q("roomEntryMsg"),(e.code||"Firebase error")+" | "+(e.message||"Unknown error")+" · 加入失敗","error")}
 }
 
 async function enterRoom(rid,uid,isHost){
