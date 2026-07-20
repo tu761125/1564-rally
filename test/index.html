@@ -132,7 +132,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1.7 NEXT PLAYER COUNTDOWN</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1.8 SERVER TIME FIX</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -562,9 +562,14 @@ const existingRoomApp=getApps().find(a=>a.name==="room-sync");
 const roomApp=existingRoomApp||initializeApp(roomFirebaseConfig,"room-sync");
 const roomAuth=getAuth(roomApp);
 const roomDb=getDatabase(roomApp);
+let firebaseServerOffset=0;
+onValue(ref(roomDb,".info/serverTimeOffset"),snap=>{
+  firebaseServerOffset=Number(snap.val())||0;
+});
+const serverNow=()=>Date.now()+firebaseServerOffset;
 const q=id=>document.getElementById(id);
 
-let current={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null};
+let current={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null,finishing:false};
 
 const cleanRoom=v=>v.trim().toUpperCase();
 const clean=v=>v.trim();
@@ -678,13 +683,13 @@ function render(room){
   
 clearInterval(current.timer);
   const draw=()=>{
-    const now=Date.now();
+    const now=serverNow();
     let elapsed=0;
     let masterRemaining=Number(room.remaining??room.totalDuration??0);
 
     if(room.status==="running"&&room.startedAt){
       elapsed=Math.max(0,Math.floor((now-Number(room.startedAt))/1000));
-      masterRemaining=Math.max(0,Number(room.totalDuration||0)-elapsed);
+      masterRemaining=Math.min(Number(room.totalDuration||0),Math.max(0,Number(room.totalDuration||0)-elapsed));
     }else{
       elapsed=Math.max(0,Number(room.totalDuration||0)-masterRemaining);
     }
@@ -698,17 +703,28 @@ clearInterval(current.timer);
     q("roomTimer").textContent=fmt(nextRemaining);
     q("overlayRoomTimer").textContent=fmt(nextRemaining);
 
-    q("roomNextPlayer").textContent=next?`Next · 下一位：${next.name}`:"Next · 下一位：DONE";
-    q("overlayNextPlayer").textContent=next?`Next · 下一位：${next.name}`:"DONE · 全部完成";
+    q("roomNextPlayer").textContent=next?`Next · 下一位：${next.name}`:(rallies.length?"Next · 下一位：DONE":"Next · 下一位：—");
+    q("overlayNextPlayer").textContent=next?`Next · 下一位：${next.name}`:(rallies.length?"DONE · 全部完成":"Next · 下一位：—");
     q("overlayAfterPlayer").textContent=after?`After · 下一位之後：${after.name}`:"After · 下一位之後：—";
 
     const statusText=
       room.status==="running"?(next?"Running · 倒數中":"Finished · 全部完成"):
+      (!rallies.length?"Waiting · 等待設定":
+      room.status==="finished"?"Finished · 全部完成":
       room.status==="paused"?"Paused · 已暫停":
-      "Waiting · 等待開始";
+      "Waiting · 等待開始");
 
     q("roomStatus").textContent=statusText;
     q("overlayRoomStatus").textContent=statusText;
+
+    if(current.isHost && room.status==="running" && rallies.length && !next && !current.finishing){
+      current.finishing=true;
+      update(ref(roomDb,`rooms/${current.roomId}`),{
+        status:"finished",
+        remaining:0,
+        startedAt:null
+      }).finally(()=>{current.finishing=false});
+    }
 
     updateRoomRosterTimes(room,masterRemaining);
   };
@@ -808,7 +824,8 @@ function updateRoomRosterTimes(room,masterRemaining){
   q("overlayRoomTimer").textContent=fmt(masterRemaining);
   q("overlayRoomStatus").textContent=
     room.status==="running"?(masterRemaining>0?"Running · 倒數中":"Finished · 已完成"):
-    room.status==="paused"?"Paused · 已暫停":"Waiting · 等待開始";
+    room.status==="finished"?"Finished · 全部完成":
+      room.status==="paused"?"Paused · 已暫停":"Waiting · 等待開始";
 }
 async function startRoom(){
   if(!current.isHost)return;
@@ -816,14 +833,14 @@ async function startRoom(){
   const room=snap.val();
   if(!(room.rallies||[]).length)return msg(q("roomLiveMsg"),"Calculate selected players first · 請先計算已勾選玩家","error");
   const duration=Number(room.remaining??room.totalDuration??0);
-  await update(ref(roomDb,`rooms/${current.roomId}`),{remaining:duration,startedAt:Date.now(),status:"running"});
+  await update(ref(roomDb,`rooms/${current.roomId}`),{remaining:duration,startedAt:serverTimestamp(),status:"running"});
   openRoomOverlay();
 }
 async function pauseRoom(){
   if(!current.isHost)return;
   const snap=await get(ref(roomDb,`rooms/${current.roomId}`));if(!snap.exists())return;
   const r=snap.val();let remain=Number(r.remaining??r.totalDuration??0);
-  if(r.status==="running"&&r.startedAt)remain=Math.max(0,Number(r.totalDuration||0)-Math.floor((Date.now()-Number(r.startedAt))/1000));
+  if(r.status==="running"&&r.startedAt)remain=Math.max(0,Number(r.totalDuration||0)-Math.floor((serverNow()-Number(r.startedAt))/1000));
   await update(ref(roomDb,`rooms/${current.roomId}`),{remaining:remain,startedAt:null,status:"paused"});
 }
 async function resetRoom(){
@@ -872,7 +889,7 @@ function leaveUi(){
   clearInterval(current.timer);
   if(typeof current.roomUnsub==="function")current.roomUnsub();
   if(typeof current.memberUnsub==="function")current.memberUnsub();
-  current={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null};
+  current={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null,finishing:false};
   q("roomLive").classList.add("hidden");q("roomEntry").classList.remove("hidden");
   q("roomMembers").innerHTML="";
 }
