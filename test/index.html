@@ -99,7 +99,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1.2 ROOM FIX</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1.3 ROOM ID FIX</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -499,7 +499,7 @@ let current={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,t
 
 const cleanRoom=v=>v.trim().toUpperCase();
 const clean=v=>v.trim();
-const roomOk=v=>/^[A-Z0-9]{4,12}$/.test(v);
+const roomOk=v=>/^[A-Z0-9]{4,12}$/i.test(v);
 const passOk=v=>/^[A-Za-z0-9]{4,12}$/.test(v);
 const idOk=v=>v.length>=2&&v.length<=16;
 
@@ -525,7 +525,7 @@ function esc(s){
 
 async function createRoom(){
   const rid=cleanRoom(q("createRoomId").value), pw=q("createRoomPassword").value, pid=clean(q("createHostId").value);
-  if(!roomOk(rid))return msg(q("roomEntryMsg"),"Room ID: 4–12 letters or numbers · 房號需為 4–12 位英文或數字","error");
+  if(!roomOk(rid))return msg(q("roomEntryMsg"),"Room ID: 4–12 letters or numbers; lowercase is accepted · 房號需為 4–12 位英文或數字，可輸入小寫","error");
   if(!passOk(pw))return msg(q("roomEntryMsg"),"Password: 4–12 letters or numbers · 密碼需為 4–12 位英文或數字","error");
   if(!idOk(pid))return msg(q("roomEntryMsg"),"Host ID: 2–16 characters · 房長 ID 需為 2–16 字元","error");
   try{
@@ -635,6 +635,14 @@ function leaveUi(){
   q("roomLive").classList.add("hidden");q("roomEntry").classList.remove("hidden");
   q("roomMembers").innerHTML="";
 }
+
+
+["createRoomId","joinRoomId"].forEach(id=>{
+  const el=q(id);
+  if(el){
+    el.addEventListener("blur",()=>{el.value=cleanRoom(el.value)});
+  }
+});
 
 function initializeRoomUi(){
   const bindings = [
