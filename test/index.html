@@ -99,7 +99,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1.1 ROOM DIAGNOSTIC</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1.2 ROOM FIX</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -161,7 +161,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
         <input id="createRoomPassword" type="password" maxlength="12" placeholder="4–12 letters or numbers">
         <label>Host ID · 房長 ID</label>
         <input id="createHostId" maxlength="16" placeholder="Game ID · 遊戲 ID">
-        <button id="createRoomBtn" class="btn primary">Create Room · 建立房間</button>
+        <button type="button" id="createRoomBtn" class="btn primary">Create Room · 建立房間</button>
       </div>
 
       <div class="room-box">
@@ -172,7 +172,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
         <input id="joinRoomPassword" type="password" maxlength="12" placeholder="Password · 密碼">
         <label>Player ID · 玩家 ID</label>
         <input id="joinPlayerId" maxlength="16" placeholder="Game ID · 遊戲 ID">
-        <button id="joinRoomBtn" class="btn primary">Join Room · 加入房間</button>
+        <button type="button" id="joinRoomBtn" class="btn primary">Join Room · 加入房間</button>
       </div>
     </div>
     <p id="roomEntryMsg" class="msg"></p>
@@ -187,7 +187,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
         <div class="room-box">
           <h3>Members · 房間成員</h3>
           <div id="roomMembers"></div>
-          <button id="leaveRoomBtn" class="btn secondary">Leave Room · 離開房間</button>
+          <button type="button" id="leaveRoomBtn" class="btn secondary">Leave Room · 離開房間</button>
         </div>
 
         <div class="room-box">
@@ -198,9 +198,9 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
           <div id="roomTimer" class="room-timer">00:30</div>
           <p id="roomStatus" class="room-status">Waiting · 等待開始</p>
           <div id="hostControls" class="buttons hidden">
-            <button id="roomStartBtn" class="btn primary">Start · 開始</button>
-            <button id="roomPauseBtn" class="btn secondary">Pause · 暫停</button>
-            <button id="roomResetBtn" class="btn secondary">Reset · 重設</button>
+            <button type="button" id="roomStartBtn" class="btn primary">Start · 開始</button>
+            <button type="button" id="roomPauseBtn" class="btn secondary">Pause · 暫停</button>
+            <button type="button" id="roomResetBtn" class="btn secondary">Reset · 重設</button>
           </div>
         </div>
       </div>
@@ -474,6 +474,7 @@ if (!configured) {
 
 
 <script type="module">
+window.addEventListener("unhandledrejection",e=>{const el=document.getElementById("roomEntryMsg");if(el){el.textContent="Room startup error: "+(e.reason?.message||e.reason||"Unknown")+" · 房間程式啟動失敗";el.className="msg error";}});
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import { getDatabase, ref, get, set, update, remove, onValue, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
@@ -488,7 +489,8 @@ const roomFirebaseConfig={
   appId:"1:32423245045:web:b6967c121fb9e6ca0881bc",
   measurementId:"G-ZCS1JXN6SB"
 };
-const roomApp=getApps().length?getApp():initializeApp(roomFirebaseConfig);
+const existingRoomApp=getApps().find(a=>a.name==="room-sync");
+const roomApp=existingRoomApp||initializeApp(roomFirebaseConfig,"room-sync");
 const roomAuth=getAuth(roomApp);
 const roomDb=getDatabase(roomApp);
 const q=id=>document.getElementById(id);
@@ -634,12 +636,31 @@ function leaveUi(){
   q("roomMembers").innerHTML="";
 }
 
-q("createRoomBtn").onclick=createRoom;
-q("joinRoomBtn").onclick=joinRoom;
-q("leaveRoomBtn").onclick=leaveRoom;
-q("roomStartBtn").onclick=startRoom;
-q("roomPauseBtn").onclick=pauseRoom;
-q("roomResetBtn").onclick=resetRoom;
+function initializeRoomUi(){
+  const bindings = [
+    ["createRoomBtn", createRoom],
+    ["joinRoomBtn", joinRoom],
+    ["leaveRoomBtn", leaveRoom],
+    ["roomStartBtn", startRoom],
+    ["roomPauseBtn", pauseRoom],
+    ["roomResetBtn", resetRoom]
+  ];
+  for(const [id, handler] of bindings){
+    const el=q(id);
+    if(!el) throw new Error(`Missing room element: ${id}`);
+    el.addEventListener("click", event=>{
+      event.preventDefault();
+      handler();
+    });
+  }
+  msg(q("roomEntryMsg"),"Room system ready · 房間系統已就緒","success");
+}
+
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded", initializeRoomUi, {once:true});
+}else{
+  initializeRoomUi();
+}
 </script>
 
 </body>
