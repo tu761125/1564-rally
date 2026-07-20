@@ -3,31 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#10151f">
+  <meta name="theme-color" content="#101722">
   <title>Kingshot Rally Sync Timer | Kingdom 1564</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="app-shell">
+  <main class="app">
     <header class="hero">
-      <div class="crest">1564</div>
+      <div class="badge">1564</div>
       <div>
         <p class="eyebrow">KINGSHOT TOOL</p>
         <h1>Rally Sync Timer</h1>
-        <p class="subtitle">同步集結倒數工具 · Kingdom 1564</p>
+        <p class="sub">同步集結倒數工具 · Kingdom 1564</p>
       </div>
     </header>
 
-    <section class="panel setup-panel">
-      <div class="section-title">
+    <section class="card">
+      <div class="section-head">
         <div>
           <span class="step">01</span>
           <h2>Rally Count <small>集結數量</small></h2>
         </div>
-        <span class="fixed-time">5 MIN RALLY · 固定 5 分鐘</span>
+        <span class="tag">5 MIN RALLY</span>
       </div>
 
-      <div class="count-picker" id="countPicker">
+      <div class="count-grid" id="countGrid">
         <button class="count-btn active" data-count="2">2<span>雙重</span></button>
         <button class="count-btn" data-count="3">3<span>三重</span></button>
         <button class="count-btn" data-count="4">4<span>四重</span></button>
@@ -35,32 +35,31 @@
       </div>
     </section>
 
-    <section class="panel">
-      <div class="section-title">
+    <section class="card">
+      <div class="section-head">
         <div>
           <span class="step">02</span>
           <h2>Players <small>玩家與行軍時間</small></h2>
         </div>
-        <span class="hint">格式 Format：1:30</span>
       </div>
 
-      <div class="players-header three-col">
-        <span>Player Name<br><small>玩家名稱</small></span>
+      <div class="column-head">
+        <span>Player<br><small>玩家</small></span>
         <span>Min<br><small>分鐘</small></span>
         <span>Sec<br><small>秒數</small></span>
       </div>
 
       <div id="playersList" class="players-list"></div>
 
-      <div class="action-grid">
-        <button id="calculateBtn" class="primary-btn">Calculate · 計算</button>
-        <button id="resetBtn" class="secondary-btn">Reset · 重設</button>
+      <div class="actions">
+        <button id="calculateBtn" class="btn primary">Calculate · 計算</button>
+        <button id="resetBtn" class="btn secondary">Reset · 重設</button>
       </div>
-      <p id="errorMessage" class="error-message" aria-live="polite"></p>
+      <p id="errorMessage" class="message error" aria-live="polite"></p>
     </section>
 
-    <section id="resultPanel" class="panel result-panel hidden">
-      <div class="section-title">
+    <section id="resultCard" class="card hidden">
+      <div class="section-head">
         <div>
           <span class="step">03</span>
           <h2>Rally Order <small>集結順序</small></h2>
@@ -69,31 +68,31 @@
 
       <div id="resultList" class="result-list"></div>
 
-      <div class="action-grid">
-        <button id="startBtn" class="start-btn">Start Countdown · 開始倒數</button>
-        <button id="copyBtn" class="secondary-btn">Copy Result · 複製結果</button>
+      <div class="actions">
+        <button id="startBtn" class="btn primary">Start Countdown · 開始倒數</button>
+        <button id="copyBtn" class="btn secondary">Copy Result · 複製結果</button>
       </div>
-      <p id="copyStatus" class="copy-status" aria-live="polite"></p>
+      <p id="copyMessage" class="message success" aria-live="polite"></p>
     </section>
   </main>
 
-  <section id="countdownScreen" class="countdown-screen hidden" aria-live="assertive">
-    <div class="countdown-topbar">
-      <span>RALLY SYNC · KINGDOM 1564</span>
-      <button id="closeCountdownBtn" class="icon-btn" aria-label="關閉倒數">✕</button>
+  <section id="countdownScreen" class="countdown hidden" aria-live="assertive">
+    <div class="countdown-bar">
+      <span>RALLY SYNC · 1564</span>
+      <button id="closeBtn" class="close-btn" aria-label="關閉">✕</button>
     </div>
 
-    <div class="countdown-content">
-      <p id="countdownLabel" class="countdown-label">NEXT PLAYER · 下一位</p>
-      <h2 id="countdownPlayer" class="countdown-player">Player</h2>
-      <p id="countdownInstruction" class="countdown-instruction">OPEN IN · 剩餘時間</p>
-      <div id="countdownNumber" class="countdown-number">0</div>
-      <p id="countdownProgress" class="countdown-progress">1 / 2</p>
+    <div class="countdown-center">
+      <p class="countdown-kicker">NEXT PLAYER · 下一位</p>
+      <h2 id="countdownPlayer">Player</h2>
+      <p id="countdownInstruction">OPEN IN · 剩餘時間</p>
+      <div id="countdownNumber">0</div>
+      <p id="countdownIndex">1 / 2</p>
     </div>
 
-    <div class="countdown-controls">
-      <button id="pauseBtn" class="control-btn">Pause · 暫停</button>
-      <button id="restartBtn" class="control-btn">Restart · 重來</button>
+    <div class="countdown-actions">
+      <button id="pauseBtn" class="btn secondary">Pause · 暫停</button>
+      <button id="restartBtn" class="btn secondary">Restart · 重來</button>
     </div>
   </section>
 

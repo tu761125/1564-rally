@@ -1,24 +1,23 @@
 const playersList = document.getElementById("playersList");
-const resultPanel = document.getElementById("resultPanel");
+const resultCard = document.getElementById("resultCard");
 const resultList = document.getElementById("resultList");
 const errorMessage = document.getElementById("errorMessage");
-const copyStatus = document.getElementById("copyStatus");
+const copyMessage = document.getElementById("copyMessage");
 
 const countdownScreen = document.getElementById("countdownScreen");
 const countdownPlayer = document.getElementById("countdownPlayer");
 const countdownInstruction = document.getElementById("countdownInstruction");
 const countdownNumber = document.getElementById("countdownNumber");
-const countdownProgress = document.getElementById("countdownProgress");
+const countdownIndex = document.getElementById("countdownIndex");
 
 let rallyCount = 2;
-let calculatedRallies = [];
+let rallies = [];
 let timeline = [];
 let timerId = null;
 let startTimestamp = 0;
 let pausedElapsed = 0;
 let isPaused = false;
-let currentEventIndex = -1;
-let finishedTimeout = null;
+let finishTimeout = null;
 
 function renderPlayers() {
   playersList.innerHTML = "";
@@ -32,8 +31,10 @@ function renderPlayers() {
         <input class="player-name" type="text" maxlength="24"
                placeholder="Player ${i + 1}" autocomplete="off">
       </div>
-      <input class="march-time" type="text" inputmode="numeric"
-             placeholder="1:30" maxlength="5" aria-label="March time">
+      <input class="march-min" type="number" inputmode="numeric"
+             min="0" max="5" placeholder="0" aria-label="March minutes">
+      <input class="march-sec" type="number" inputmode="numeric"
+             min="0" max="59" placeholder="00" aria-label="March seconds">
     `;
     playersList.appendChild(row);
   }
@@ -41,93 +42,87 @@ function renderPlayers() {
 
 document.querySelectorAll(".count-btn").forEach((button) => {
   button.addEventListener("click", () => {
-    document.querySelectorAll(".count-btn").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".count-btn").forEach((item) => item.classList.remove("active"));
     button.classList.add("active");
     rallyCount = Number(button.dataset.count);
     renderPlayers();
-
-playersList.addEventListener("input", (event) => {
-  if (event.target.classList.contains("march-minutes")) {
-    let value = Number(event.target.value);
-    if (value > 5) event.target.value = 5;
-    if (value < 0) event.target.value = 0;
-  }
-
-  if (event.target.classList.contains("march-seconds")) {
-    let value = Number(event.target.value);
-    if (value > 59) event.target.value = 59;
-    if (value < 0) event.target.value = 0;
-  }
-});
-
     clearResults();
   });
 });
 
-function parseMarchTime(minutesValue, secondsValue) {
-  const minutesText = String(minutesValue ?? "").trim();
-  const secondsText = String(secondsValue ?? "").trim();
+playersList.addEventListener("input", (event) => {
+  const input = event.target;
 
-  const minutes = minutesText === "" ? 0 : Number(minutesText);
-  const seconds = secondsText === "" ? 0 : Number(secondsText);
+  if (input.classList.contains("march-min")) {
+    if (input.value === "") return;
+    let value = Number(input.value);
+    if (value > 5) input.value = 5;
+    if (value < 0) input.value = 0;
+  }
+
+  if (input.classList.contains("march-sec")) {
+    if (input.value === "") return;
+    let value = Number(input.value);
+    if (value > 59) input.value = 59;
+    if (value < 0) input.value = 0;
+  }
+});
+
+function parseTime(minuteValue, secondValue) {
+  const minText = String(minuteValue ?? "").trim();
+  const secText = String(secondValue ?? "").trim();
+
+  const minutes = minText === "" ? 0 : Number(minText);
+  const seconds = secText === "" ? 0 : Number(secText);
 
   if (!Number.isInteger(minutes) || !Number.isInteger(seconds)) return null;
   if (minutes < 0 || minutes > 5) return null;
   if (seconds < 0 || seconds > 59) return null;
 
   const total = minutes * 60 + seconds;
-  if (total > 300) return null;
-
-  return total;
+  return total <= 300 ? total : null;
 }
 
 function formatTime(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function collectPlayers() {
   const rows = [...document.querySelectorAll(".player-row")];
-  const players = [];
 
-  for (let i = 0; i < rows.length; i++) {
-    const nameInput = rows[i].querySelector(".player-name");
-    const minuteInput = rows[i].querySelector(".march-minutes");
-    const secondInput = rows[i].querySelector(".march-seconds");
-
-    const name = nameInput.value.trim() || `Player ${i + 1}`;
-    const marchSeconds = parseMarchTime(minuteInput.value, secondInput.value);
+  return rows.map((row, index) => {
+    const name = row.querySelector(".player-name").value.trim() || `Player ${index + 1}`;
+    const minutes = row.querySelector(".march-min").value;
+    const seconds = row.querySelector(".march-sec").value;
+    const marchSeconds = parseTime(minutes, seconds);
 
     if (marchSeconds === null) {
-      throw new Error(`請檢查第 ${i + 1} 位的行軍時間：分鐘 0～5，秒數 0～59。`);
+      throw new Error(`請檢查第 ${index + 1} 位：分鐘 0～5，秒數 0～59。`);
     }
 
-    players.push({ name, marchSeconds });
-  }
-
-  return players;
+    return { name, marchSeconds };
+  });
 }
 
-function calculateRallies() {
+function calculate() {
   try {
     errorMessage.textContent = "";
-    copyStatus.textContent = "";
+    copyMessage.textContent = "";
 
-    const players = collectPlayers();
-    players.sort((a, b) => b.marchSeconds - a.marchSeconds);
+    const players = collectPlayers().sort((a, b) => b.marchSeconds - a.marchSeconds);
+    const longest = players[0].marchSeconds;
 
-    const longestMarch = players[0].marchSeconds;
-
-    calculatedRallies = players.map((player, index) => ({
+    rallies = players.map((player, index) => ({
       ...player,
       position: index + 1,
-      offset: longestMarch - player.marchSeconds
+      offset: longest - player.marchSeconds
     }));
 
     renderResults();
-    resultPanel.classList.remove("hidden");
-    resultPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    resultCard.classList.remove("hidden");
+    resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     clearResults();
     errorMessage.textContent = error.message;
@@ -135,24 +130,24 @@ function calculateRallies() {
 }
 
 function renderResults() {
-  resultList.innerHTML = calculatedRallies.map((rally) => `
+  resultList.innerHTML = rallies.map((rally) => `
     <div class="result-item">
-      <div class="result-position">${rally.position}</div>
+      <div class="pos">${rally.position}</div>
       <div>
-        <div class="result-name">${escapeHtml(rally.name)}</div>
-        <div class="result-march">March 行軍 ${formatTime(rally.marchSeconds)}</div>
+        <div class="name">${escapeHtml(rally.name)}</div>
+        <div class="meta">March 行軍 ${formatTime(rally.marchSeconds)}</div>
       </div>
-      <div class="result-offset">${rally.offset === 0 ? "NOW · 立即" : `+${formatTime(rally.offset)}`}</div>
+      <div class="offset">${rally.offset === 0 ? "NOW · 立即" : `+${formatTime(rally.offset)}`}</div>
     </div>
   `).join("");
 }
 
 function clearResults() {
-  calculatedRallies = [];
+  rallies = [];
   resultList.innerHTML = "";
-  resultPanel.classList.add("hidden");
+  resultCard.classList.add("hidden");
   errorMessage.textContent = "";
-  copyStatus.textContent = "";
+  copyMessage.textContent = "";
 }
 
 function resetAll() {
@@ -161,24 +156,19 @@ function resetAll() {
   clearResults();
 }
 
-function buildTimeline() {
-  timeline = calculatedRallies.map((rally) => ({
+function startCountdown() {
+  if (!rallies.length) return;
+
+  timeline = rallies.map((rally) => ({
     player: rally.name,
     offset: rally.offset,
     position: rally.position
   }));
-}
 
-function startCountdown() {
-  if (!calculatedRallies.length) return;
-
-  buildTimeline();
   stopTimer();
-
   startTimestamp = performance.now();
   pausedElapsed = 0;
   isPaused = false;
-  currentEventIndex = -1;
 
   countdownScreen.classList.remove("hidden", "warning", "go");
   document.body.style.overflow = "hidden";
@@ -189,11 +179,8 @@ function startCountdown() {
 }
 
 function updateCountdown() {
-  const elapsed = isPaused
-    ? pausedElapsed
-    : (performance.now() - startTimestamp) / 1000;
-
-  let nextIndex = timeline.findIndex((event) => event.offset > elapsed);
+  const elapsed = isPaused ? pausedElapsed : (performance.now() - startTimestamp) / 1000;
+  const nextIndex = timeline.findIndex((event) => event.offset > elapsed);
 
   if (nextIndex === -1) {
     const lastIndex = timeline.length - 1;
@@ -211,11 +198,7 @@ function updateCountdown() {
   const event = timeline[nextIndex];
   const remaining = Math.max(0, Math.ceil(event.offset - elapsed));
 
-  if (nextIndex !== currentEventIndex) {
-    currentEventIndex = nextIndex;
-  }
-
-  if (event.offset === 0 || remaining === 0) {
+  if (remaining === 0) {
     showGo(event, nextIndex);
     return;
   }
@@ -225,7 +208,7 @@ function updateCountdown() {
   countdownPlayer.textContent = event.player;
   countdownInstruction.textContent = "OPEN IN · 剩餘時間";
   countdownNumber.textContent = remaining;
-  countdownProgress.textContent = `${nextIndex + 1} / ${timeline.length}`;
+  countdownIndex.textContent = `${nextIndex + 1} / ${timeline.length}`;
 }
 
 function showGo(event, index) {
@@ -234,7 +217,7 @@ function showGo(event, index) {
   countdownPlayer.textContent = event.player;
   countdownInstruction.textContent = "OPEN RALLY NOW · 立即開集結";
   countdownNumber.textContent = "GO!";
-  countdownProgress.textContent = `${index + 1} / ${timeline.length}`;
+  countdownIndex.textContent = `${index + 1} / ${timeline.length}`;
 }
 
 function finishCountdown() {
@@ -244,22 +227,18 @@ function finishCountdown() {
   countdownPlayer.textContent = "ALL RALLIES";
   countdownInstruction.textContent = "COMPLETE · 全部已發車";
   countdownNumber.textContent = "DONE";
-  countdownProgress.textContent = `${timeline.length} / ${timeline.length}`;
+  countdownIndex.textContent = `${timeline.length} / ${timeline.length}`;
 
-  finishedTimeout = window.setTimeout(() => {
-    closeCountdown();
-  }, 2600);
+  finishTimeout = window.setTimeout(closeCountdown, 2600);
 }
 
 function togglePause() {
-  if (!timerId && !isPaused) return;
-
   const pauseBtn = document.getElementById("pauseBtn");
 
   if (!isPaused) {
     pausedElapsed = (performance.now() - startTimestamp) / 1000;
     isPaused = true;
-    window.clearInterval(timerId);
+    if (timerId) window.clearInterval(timerId);
     timerId = null;
     pauseBtn.textContent = "Resume · 繼續";
   } else {
@@ -270,19 +249,15 @@ function togglePause() {
   }
 }
 
-function restartCountdown() {
-  startCountdown();
-}
-
 function stopTimer(clearFinish = true) {
   if (timerId) {
     window.clearInterval(timerId);
     timerId = null;
   }
 
-  if (clearFinish && finishedTimeout) {
-    window.clearTimeout(finishedTimeout);
-    finishedTimeout = null;
+  if (clearFinish && finishTimeout) {
+    window.clearTimeout(finishTimeout);
+    finishTimeout = null;
   }
 }
 
@@ -294,15 +269,11 @@ function closeCountdown() {
 }
 
 async function copyResult() {
-  if (!calculatedRallies.length) return;
+  if (!rallies.length) return;
 
-  const lines = [
-    "📢 Rally Order / 集結順序",
-    "Kingdom 1564",
-    ""
-  ];
+  const lines = ["📢 Rally Order / 集結順序", "Kingdom 1564", ""];
 
-  calculatedRallies.forEach((rally) => {
+  rallies.forEach((rally) => {
     const timing = rally.offset === 0
       ? "NOW / 立即"
       : `+${formatTime(rally.offset)} / ${rally.offset}秒後`;
@@ -314,7 +285,7 @@ async function copyResult() {
 
   try {
     await navigator.clipboard.writeText(text);
-    copyStatus.textContent = "Copied! 已複製，可直接貼到遊戲聊天。";
+    copyMessage.textContent = "Copied! 已複製，可直接貼到遊戲聊天。";
   } catch {
     const textarea = document.createElement("textarea");
     textarea.value = text;
@@ -322,7 +293,7 @@ async function copyResult() {
     textarea.select();
     document.execCommand("copy");
     textarea.remove();
-    copyStatus.textContent = "Copied! 已複製，可直接貼到遊戲聊天。";
+    copyMessage.textContent = "Copied! 已複製，可直接貼到遊戲聊天。";
   }
 }
 
@@ -336,12 +307,12 @@ function escapeHtml(value) {
   })[char]);
 }
 
-document.getElementById("calculateBtn").addEventListener("click", calculateRallies);
+document.getElementById("calculateBtn").addEventListener("click", calculate);
 document.getElementById("resetBtn").addEventListener("click", resetAll);
 document.getElementById("startBtn").addEventListener("click", startCountdown);
 document.getElementById("copyBtn").addEventListener("click", copyResult);
 document.getElementById("pauseBtn").addEventListener("click", togglePause);
-document.getElementById("restartBtn").addEventListener("click", restartCountdown);
-document.getElementById("closeCountdownBtn").addEventListener("click", closeCountdown);
+document.getElementById("restartBtn").addEventListener("click", startCountdown);
+document.getElementById("closeBtn").addEventListener("click", closeCountdown);
 
 renderPlayers();
