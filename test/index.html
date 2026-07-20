@@ -123,11 +123,16 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 .buttons{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:560px){.buttons{grid-template-columns:1fr}.room-overlay{padding:12px}.overlay-roster .room-rally-item{font-size:16px}}
 
+
+.room-next-player,.overlay-next-player{text-align:center;font-weight:900;color:var(--gold2);margin-top:14px}
+.overlay-next-player{font-size:clamp(22px,5vw,40px);margin-top:34px}
+.overlay-after-player{text-align:center;color:var(--muted);font-size:18px;margin:8px 0 22px}
+
 </style>
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1.6 ROOM FULLSCREEN</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.1.7 NEXT PLAYER COUNTDOWN</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -235,8 +240,9 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
   </div>
 
   <div id="roomCountdownSummary" class="room-countdown-summary">
-    <div id="roomTimer" class="room-timer">00:00</div>
-    <p id="roomStatus" class="room-status">Waiting · 等待開始</p>
+    <div id="roomNextPlayer" class="room-next-player">Next · 下一位：—</div>
+<div id="roomTimer" class="room-timer">00:00</div>
+<p id="roomStatus" class="room-status">Waiting · 等待開始</p>
     <div id="roomRallyRoster" class="room-rally-roster"></div>
   </div>
 
@@ -264,8 +270,10 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
       </div>
       <button type="button" id="closeRoomOverlayBtn" class="btn secondary">Close · 關閉</button>
     </div>
-    <div id="overlayRoomTimer" class="overlay-timer">00:00</div>
-    <div id="overlayRoomStatus" class="overlay-status">Waiting · 等待開始</div>
+    <div id="overlayNextPlayer" class="overlay-next-player">Next · 下一位：—</div>
+<div id="overlayRoomTimer" class="overlay-timer">00:00</div>
+<div id="overlayRoomStatus" class="overlay-status">Waiting · 等待開始</div>
+<div id="overlayAfterPlayer" class="overlay-after-player">After · 下一位之後：—</div>
     <div id="overlayRoomRoster" class="overlay-roster"></div>
   </div>
 </div>
@@ -671,16 +679,37 @@ function render(room){
 clearInterval(current.timer);
   const draw=()=>{
     const now=Date.now();
-    let masterRemaining=0;
-    const rallies=room.rallies||[];
+    let elapsed=0;
+    let masterRemaining=Number(room.remaining??room.totalDuration??0);
+
     if(room.status==="running"&&room.startedAt){
-      const elapsed=Math.floor((now-Number(room.startedAt))/1000);
+      elapsed=Math.max(0,Math.floor((now-Number(room.startedAt))/1000));
       masterRemaining=Math.max(0,Number(room.totalDuration||0)-elapsed);
     }else{
-      masterRemaining=Number(room.remaining??room.totalDuration??0);
+      elapsed=Math.max(0,Number(room.totalDuration||0)-masterRemaining);
     }
-    q("roomTimer").textContent=fmt(masterRemaining);
-    q("roomStatus").textContent=room.status==="running"?(masterRemaining>0?"Running · 倒數中":"Finished · 已完成"):room.status==="paused"?"Paused · 已暫停":"Waiting · 等待開始";
+
+    const rallies=[...(room.rallies||[])].sort((a,b)=>Number(a.launchAt||0)-Number(b.launchAt||0));
+    const pending=rallies.filter(r=>elapsed<Number(r.launchAt||0));
+    const next=pending[0]||null;
+    const after=pending[1]||null;
+    const nextRemaining=next?Math.max(0,Number(next.launchAt||0)-elapsed):0;
+
+    q("roomTimer").textContent=fmt(nextRemaining);
+    q("overlayRoomTimer").textContent=fmt(nextRemaining);
+
+    q("roomNextPlayer").textContent=next?`Next · 下一位：${next.name}`:"Next · 下一位：DONE";
+    q("overlayNextPlayer").textContent=next?`Next · 下一位：${next.name}`:"DONE · 全部完成";
+    q("overlayAfterPlayer").textContent=after?`After · 下一位之後：${after.name}`:"After · 下一位之後：—";
+
+    const statusText=
+      room.status==="running"?(next?"Running · 倒數中":"Finished · 全部完成"):
+      room.status==="paused"?"Paused · 已暫停":
+      "Waiting · 等待開始";
+
+    q("roomStatus").textContent=statusText;
+    q("overlayRoomStatus").textContent=statusText;
+
     updateRoomRosterTimes(room,masterRemaining);
   };
   draw();current.timer=setInterval(draw,250);
@@ -752,7 +781,7 @@ async function calculateRoomRallies(){
 function renderRoomRoster(room){
   const renderTo=list=>{
     list.innerHTML="";
-    (room.rallies||[]).forEach(r=>{
+    [...(room.rallies||[])].sort((a,b)=>Number(a.launchAt||0)-Number(b.launchAt||0)).forEach(r=>{
       const item=document.createElement("div");item.className="room-rally-item";item.dataset.id=r.id;
       item.innerHTML=`<span class="room-rally-name">${esc(r.name)}</span><span class="room-rally-time">--</span>`;
       list.appendChild(item);
@@ -767,7 +796,7 @@ function updateRoomRosterTimes(room,masterRemaining){
   const elapsed=Math.max(0,total-masterRemaining);
   ["roomRallyRoster","overlayRoomRoster"].forEach(listId=>{
     const list=q(listId);
-    (room.rallies||[]).forEach(r=>{
+    [...(room.rallies||[])].sort((a,b)=>Number(a.launchAt||0)-Number(b.launchAt||0)).forEach(r=>{
       const item=list.querySelector(`[data-id="${CSS.escape(r.id)}"]`);
       if(!item)return;
       const remain=Math.max(0,Number(r.launchAt||0)-elapsed);
