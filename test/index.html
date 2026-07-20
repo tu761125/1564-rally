@@ -28,17 +28,69 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 .hidden{display:none!important}
 .countdown{position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;background:radial-gradient(circle at 50% 32%,rgba(230,184,95,.21),transparent 32%),linear-gradient(180deg,#121b27,#080b10)}.countdown.warning{background:radial-gradient(circle at 50% 35%,rgba(241,192,76,.30),transparent 35%),linear-gradient(180deg,#261e10,#090908)}.countdown.go{background:radial-gradient(circle at 50% 35%,rgba(102,223,160,.34),transparent 35%),linear-gradient(180deg,#10261b,#070c09)}
 .ctop{display:flex;justify-content:space-between;align-items:center;padding:18px;color:var(--gold);font-size:11px;font-weight:900}.ctop button{width:42px;height:42px;border:1px solid var(--line);border-radius:50%;background:#202b39;color:var(--text)}.cmain{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}.clabel{color:var(--gold);font-size:12px;letter-spacing:.16em;font-weight:900}#cplayer{font-size:clamp(38px,12vw,82px)}#cinstruction{color:var(--muted);font-weight:900}#cnumber{color:var(--gold2);font-size:clamp(110px,42vw,270px);line-height:1;font-weight:950}.countdown.go #cnumber{color:#8af1b9;font-size:clamp(82px,27vw,185px)}#cprogress{color:var(--muted)}
+
+.utc-bar{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:14px;padding:12px 15px;border:1px solid rgba(230,184,95,.32);
+  border-radius:14px;background:linear-gradient(135deg,rgba(230,184,95,.13),rgba(16,24,34,.96))
+}
+.utc-bar span{display:block;color:var(--muted);font-size:10px;letter-spacing:.1em}
+.utc-bar strong{display:block;margin-top:2px;color:var(--gold2);font-size:27px;font-variant-numeric:tabular-nums}
+.utc-bar small{color:var(--muted);font-size:11px}
+.prep-input-wrap{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center}
+.prep-input-wrap input{text-align:center;font-size:24px;font-weight:900}
+.prep-input-wrap span{color:var(--muted);font-size:13px}
+.ctop>div{display:flex;flex-direction:column;gap:4px}
+.ctop small{color:var(--muted);font-size:10px;letter-spacing:.08em}
+.countdown-roster{
+  width:min(560px,100%);max-height:34vh;overflow:auto;margin-top:14px;
+  padding:9px;border:1px solid var(--line);border-radius:13px;background:rgba(8,13,19,.72)
+}
+.roster-row{
+  display:grid;grid-template-columns:32px 1fr auto;gap:9px;align-items:center;
+  padding:9px;border-bottom:1px solid rgba(59,75,96,.65);text-align:left
+}
+.roster-row:last-child{border-bottom:0}
+.roster-index{
+  width:27px;height:27px;display:grid;place-items:center;border:1px solid var(--line);
+  border-radius:50%;color:var(--muted);font-size:11px;font-weight:900
+}
+.roster-name{font-weight:800;overflow-wrap:anywhere}
+.roster-state{font-size:11px;font-weight:900;color:var(--muted)}
+.roster-row.done .roster-index,.roster-row.done .roster-state{color:var(--green);border-color:var(--green)}
+.roster-row.current{background:rgba(230,184,95,.10);border-radius:9px}
+.roster-row.current .roster-index,.roster-row.current .roster-state{color:var(--gold2);border-color:var(--gold)}
+
 @media(max-width:620px){.pool-row{grid-template-columns:42px 1fr 1fr 18px 1fr 40px}.pool-row .name-field{grid-column:2/7}.buttons{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">集結倒數測試版</p><span class="version">VERSION 2.2 TEST</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單與準備倒數測試版</p><span class="version">VERSION 2.3 TEST</span></div></header>
+
+<section class="utc-bar">
+  <div>
+    <span>UTC TIME · UTC 時間</span>
+    <strong id="utcClock">00:00:00</strong>
+  </div>
+  <small id="utcDate">UTC</small>
+</section>
 
 <div class="tabs">
 <button class="tab-btn active" data-tab="quick">Quick Rally · 快速集結</button>
 <button class="tab-btn" data-tab="pool">Player Pool · 玩家名單</button>
 </div>
+
+<section class="card prep-card">
+  <div class="head">
+    <div><span class="step">00</span><h2>Preparation Time<small>按下開始後，第一位玩家出發前的準備秒數</small></h2></div>
+    <span class="note">Default 3 sec<br>預設 3 秒</span>
+  </div>
+  <div class="prep-input-wrap">
+    <input id="prepSeconds" type="tel" inputmode="numeric" maxlength="2" value="3" aria-label="Preparation seconds">
+    <span>seconds · 秒</span>
+  </div>
+</section>
 
 <section id="quickTab">
 <section class="card"><div class="head"><div><span class="step">01</span><h2>Rally Count<small>集結數量</small></h2></div></div>
@@ -59,11 +111,35 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 </section>
 </main>
 
-<section id="countdown" class="countdown hidden"><div class="ctop"><span>RALLY COUNTDOWN</span><button id="closeCountdown">✕</button></div><div class="cmain"><p class="clabel">NEXT PLAYER · 下一位</p><h2 id="cplayer">Player</h2><p id="cinstruction">OPEN IN · 剩餘時間</p><div id="cnumber">0</div><p id="cprogress">1 / 2</p></div></section>
+<section id="countdown" class="countdown hidden">
+  <div class="ctop">
+    <div><span>RALLY COUNTDOWN</span><small id="countdownUtc">UTC 00:00:00</small></div>
+    <button id="closeCountdown">✕</button>
+  </div>
+  <div class="cmain">
+    <p class="clabel">NEXT PLAYER · 下一位</p>
+    <h2 id="cplayer">Player</h2>
+    <p id="cinstruction">OPEN IN · 剩餘時間</p>
+    <div id="cnumber">0</div>
+    <p id="cprogress">1 / 2</p>
+    <div id="countdownRoster" class="countdown-roster"></div>
+  </div>
+</section>
 
 <script>
 const $=id=>document.getElementById(id);
 let quickCount=2,quickRallies=[],poolRallies=[],activeRallies=[],timer=null;
+
+function updateUtc(){
+  const now=new Date();
+  const time=[now.getUTCHours(),now.getUTCMinutes(),now.getUTCSeconds()]
+    .map(v=>String(v).padStart(2,"0")).join(":");
+  $("utcClock").textContent=time;
+  $("utcDate").textContent=`${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,"0")}-${String(now.getUTCDate()).padStart(2,"0")} · UTC`;
+  $("countdownUtc").textContent=`UTC ${time}`;
+}
+updateUtc();
+setInterval(updateUtc,250);
 
 function fmt(s){return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
@@ -75,7 +151,7 @@ document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{document.querySe
 
 function renderQuick(){
  $("quickPlayers").innerHTML="";
- for(let i=0;i<quickCount;i++){const d=document.createElement("div");d.className="player";d.innerHTML=`<div class="player-top">Rally ${i+1}</div><div class="name-row field"><label>Player Name · 玩家名稱</label><input class="qname" placeholder="Player ${i+1}"></div><div class="time-row"><div class="field"><label>Minutes · 分鐘</label><input class="qmin time-input" type="tel" inputmode="numeric" maxlength="1"></div><div class="colon">:</div><div class="field"><label>Seconds · 秒數</label><input class="qsec time-input" type="tel" inputmode="numeric" maxlength="2"></div></div>`;$("quickPlayers").appendChild(d)}
+ for(let i=0;i<quickCount;i++){const d=document.createElement("div");d.className="player";d.innerHTML=`<div class="player-top">Rally ${i+1}</div><div class="name-row field"><label>Player Name · 玩家名稱</label><input class="qname" placeholder="Player ${i+1}"></div><div class="time-row"><div class="field"><label>Minutes · 分鐘</label><input class="qmin time-input" type="tel" inputmode="numeric" maxlength="1" value="0"></div><div class="colon">:</div><div class="field"><label>Seconds · 秒數</label><input class="qsec time-input" type="tel" inputmode="numeric" maxlength="2" value="0"></div></div>`;$("quickPlayers").appendChild(d)}
 }
 document.querySelectorAll(".count").forEach(b=>b.onclick=()=>{quickCount=+b.dataset.count;document.querySelectorAll(".count").forEach(x=>x.classList.remove("active"));b.classList.add("active");renderQuick();$("quickResultCard").classList.add("hidden")});
 $("quickCalc").onclick=()=>{try{const data=[...document.querySelectorAll("#quickPlayers .player")].map((p,i)=>{const march=parse(p.querySelector(".qmin").value,p.querySelector(".qsec").value);if(march===null)throw Error(`第 ${i+1} 位時間錯誤`);return{name:p.querySelector(".qname").value.trim()||`Player ${i+1}`,march}});quickRallies=buildRallies(data);$("quickResults").innerHTML=resultHtml(quickRallies);$("quickResultCard").classList.remove("hidden");$("quickError").textContent=""}catch(e){$("quickError").textContent=e.message}};
@@ -107,13 +183,89 @@ $("selectAll").onclick=()=>{pool.forEach(p=>p.selected=true);savePool();renderPo
 $("clearSelection").onclick=()=>{pool.forEach(p=>p.selected=false);savePool();renderPool();$("poolResultCard").classList.add("hidden")};
 $("poolCalc").onclick=()=>{const selected=pool.filter(p=>p.selected);if(selected.length<2){$("poolError").textContent="請至少勾選 2 位玩家";$("poolResultCard").classList.add("hidden");return}poolRallies=buildRallies(selected.map(p=>({name:p.name||"Player",march:p.min*60+p.sec})));$("poolResults").innerHTML=resultHtml(poolRallies);$("poolResultCard").classList.remove("hidden");$("poolError").textContent=""};
 
-function startCountdown(rs){activeRallies=rs;if(!rs.length)return;$("countdown").classList.remove("hidden");document.body.style.overflow="hidden";const start=performance.now();timer&&clearInterval(timer);timer=setInterval(()=>{const e=(performance.now()-start)/1000;const i=rs.findIndex(r=>r.offset>e);if(i<0){const l=rs.at(-1);if(e-l.offset<1.4){$("countdown").classList.add("go");$("cplayer").textContent=l.name;$("cinstruction").textContent="OPEN RALLY NOW · 立即開集結";$("cnumber").textContent="GO!";$("cprogress").textContent=`${rs.length}/${rs.length}`}else{$("cplayer").textContent="ALL RALLIES";$("cinstruction").textContent="COMPLETE";$("cnumber").textContent="DONE";clearInterval(timer)}return}const r=rs[i],remain=Math.ceil(r.offset-e);$("countdown").classList.toggle("warning",remain<=5);$("countdown").classList.remove("go");$("cplayer").textContent=r.name;$("cinstruction").textContent="OPEN IN · 剩餘時間";$("cnumber").textContent=remain;$("cprogress").textContent=`${i+1}/${rs.length}`},100)}
+function renderRoster(rs,currentIndex,doneAll=false){
+  $("countdownRoster").innerHTML=rs.map((r,i)=>{
+    let state="WAITING · 等待";
+    let cls="";
+    if(doneAll || i<currentIndex){state="DONE · 已出發";cls="done"}
+    else if(i===currentIndex){state="NEXT · 下一位";cls="current"}
+    return `<div class="roster-row ${cls}">
+      <div class="roster-index">${i+1}</div>
+      <div class="roster-name">${esc(r.name)}</div>
+      <div class="roster-state">${state}</div>
+    </div>`
+  }).join("");
+}
+
+function startCountdown(rs){
+  activeRallies=rs;
+  if(!rs.length)return;
+
+  const prep=Math.max(0,Math.min(30,+($("prepSeconds").value||0)));
+  $("prepSeconds").value=prep;
+  $("countdown").classList.remove("hidden");
+  document.body.style.overflow="hidden";
+  const start=performance.now()+prep*1000;
+  timer&&clearInterval(timer);
+  renderRoster(rs,0);
+
+  timer=setInterval(()=>{
+    const e=(performance.now()-start)/1000;
+
+    if(e<0){
+      $("countdown").classList.remove("go","warning");
+      $("cplayer").textContent=rs[0].name;
+      $("cinstruction").textContent="GET READY · 準備出發";
+      $("cnumber").textContent=Math.ceil(-e);
+      $("cprogress").textContent=`Preparation · 準備 ${prep}s`;
+      renderRoster(rs,0);
+      return;
+    }
+
+    const i=rs.findIndex(r=>r.offset>e);
+
+    if(i<0){
+      const l=rs.at(-1);
+      if(e-l.offset<1.4){
+        $("countdown").classList.add("go");
+        $("countdown").classList.remove("warning");
+        $("cplayer").textContent=l.name;
+        $("cinstruction").textContent="OPEN RALLY NOW · 立即開集結";
+        $("cnumber").textContent="GO!";
+        $("cprogress").textContent=`${rs.length}/${rs.length}`;
+        renderRoster(rs,rs.length-1);
+      }else{
+        $("cplayer").textContent="ALL RALLIES";
+        $("cinstruction").textContent="COMPLETE · 全部完成";
+        $("cnumber").textContent="DONE";
+        $("cprogress").textContent=`${rs.length}/${rs.length}`;
+        renderRoster(rs,rs.length,true);
+        clearInterval(timer);
+      }
+      return;
+    }
+
+    const r=rs[i],remain=Math.ceil(r.offset-e);
+    $("countdown").classList.toggle("warning",remain<=5);
+    $("countdown").classList.remove("go");
+    $("cplayer").textContent=r.name;
+    $("cinstruction").textContent="OPEN IN · 剩餘時間";
+    $("cnumber").textContent=remain;
+    $("cprogress").textContent=`${i+1}/${rs.length}`;
+    renderRoster(rs,i);
+  },100);
+}
 $("quickStart").onclick=()=>startCountdown(quickRallies);$("poolStart").onclick=()=>startCountdown(poolRallies);
 $("closeCountdown").onclick=()=>{timer&&clearInterval(timer);$("countdown").classList.add("hidden");document.body.style.overflow=""};
 function copy(rs){navigator.clipboard.writeText(rs.map(r=>`${r.pos}. ${r.name} — ${r.offset===0?"NOW":"+"+fmt(r.offset)}`).join("\n"))}
 $("quickCopy").onclick=()=>copy(quickRallies);$("poolCopy").onclick=()=>copy(poolRallies);
 
-document.body.addEventListener("input",e=>{if(e.target.matches(".qmin,.qsec,.pmin,.psec")){e.target.value=e.target.value.replace(/\D/g,"")}});
+document.body.addEventListener("input",e=>{
+  if(e.target.matches(".qmin,.qsec,.pmin,.psec,#prepSeconds")){
+    e.target.value=e.target.value.replace(/\D/g,"");
+  }
+  if(e.target.id==="prepSeconds" && +e.target.value>30)e.target.value="30";
+});
 renderQuick();renderPool();
 </script>
 </body>
