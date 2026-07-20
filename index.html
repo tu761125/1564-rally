@@ -1,101 +1,291 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#101722">
-  <title>Kingshot Rally Sync Timer | Kingdom 1564</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101722">
+<title>1564 Rally Sync Timer v2.1</title>
+<style>
+:root{
+  --bg:#0a0f16;--panel:#192331;--panel2:#101822;--line:#3b4b60;
+  --gold:#e6b85f;--gold2:#ffe0a0;--text:#f5f0e6;--muted:#aab4c3;
+  --green:#66dfa0;--red:#ff746a
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg)}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",Arial,sans-serif;
+  color:var(--text);
+  background:radial-gradient(circle at 50% -10%,rgba(230,184,95,.18),transparent 35%),
+             linear-gradient(180deg,#172231,var(--bg) 55%,#070a0e)
+}
+button,input{font:inherit}
+.app{width:min(760px,100%);margin:auto;padding:22px 16px 44px}
+.hero{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.badge{width:68px;height:74px;display:grid;place-items:center;border:2px solid var(--gold);
+  border-radius:10px 10px 23px 23px;color:var(--gold2);font-weight:900;font-size:20px}
+.kicker{margin:0;color:var(--gold);font-size:11px;letter-spacing:.2em;font-weight:900}
+h1{margin:2px 0 4px;font-size:clamp(28px,7vw,42px)}
+.hero-sub{margin:0;color:var(--muted);font-size:13px}
+.version{display:inline-block;margin-top:5px;padding:3px 7px;border:1px solid var(--gold);
+  border-radius:999px;color:var(--gold2);font-size:10px;font-weight:800}
+.card{margin-bottom:15px;padding:17px;border:1px solid rgba(230,184,95,.28);border-radius:18px;
+  background:linear-gradient(145deg,rgba(31,42,57,.98),rgba(18,25,35,.98));
+  box-shadow:0 18px 42px rgba(0,0,0,.32)}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:15px}
+.head>div{display:flex;align-items:center;gap:9px}
+.step{color:var(--gold);font-weight:900;font-size:12px}
+h2{margin:0;font-size:18px}
+h2 small{display:block;margin-top:2px;color:var(--muted);font-size:12px;font-weight:500}
+.note{color:var(--gold2);font-size:10px;text-align:right}
+.counts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.count{height:64px;border:1px solid var(--line);border-radius:13px;background:#202b39;color:var(--text);
+  font-size:24px;font-weight:900}
+.count span{display:block;color:var(--muted);font-size:10px;font-weight:500}
+.count.active{border-color:var(--gold);color:var(--gold2);
+  background:linear-gradient(180deg,rgba(230,184,95,.23),rgba(230,184,95,.08))}
+.player{padding:13px;margin-bottom:11px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)}
+.player-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
+.player-top strong{color:var(--gold2);font-size:13px}
+.field label{display:block;margin-bottom:5px;color:var(--muted);font-size:10px}
+.name-row{margin-bottom:10px}
+.time-row{display:grid;grid-template-columns:1fr 24px 1fr;gap:9px;align-items:end}
+.colon{height:51px;display:grid;place-items:center;color:var(--gold2);font-size:26px;font-weight:900}
+input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;background:#0d151f;
+  color:var(--text);outline:none;padding:0 12px;font-size:17px}
+input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(230,184,95,.13)}
+.time-input{text-align:center;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:15px}
+.btn{min-height:52px;border-radius:12px;font-weight:900}
+.primary{border:1px solid #f0cb7c;background:linear-gradient(180deg,#f7d890,#d39a38);color:#1a1308}
+.secondary{border:1px solid var(--line);background:#202b39;color:var(--text)}
+.msg{min-height:18px;margin:9px 2px 0;font-size:12px}
+.error{color:var(--red)}.success{color:var(--green)}
+.result{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;
+  padding:12px;margin-bottom:9px;border:1px solid var(--line);border-radius:13px;background:#101823}
+.pos{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--gold);
+  border-radius:50%;color:var(--gold2);font-weight:900}
+.rname{font-weight:900}.rsub{margin-top:2px;color:var(--muted);font-size:11px}
+.offset{color:var(--green);font-weight:900}
+.hidden{display:none!important}
+.countdown{position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;
+  background:radial-gradient(circle at 50% 32%,rgba(230,184,95,.21),transparent 32%),
+             linear-gradient(180deg,#121b27,#080b10)}
+.countdown.warning{background:radial-gradient(circle at 50% 35%,rgba(241,192,76,.30),transparent 35%),
+  linear-gradient(180deg,#261e10,#090908)}
+.countdown.go{background:radial-gradient(circle at 50% 35%,rgba(102,223,160,.34),transparent 35%),
+  linear-gradient(180deg,#10261b,#070c09)}
+.ctop{display:flex;justify-content:space-between;align-items:center;padding:18px;color:var(--gold);
+  font-size:11px;letter-spacing:.12em;font-weight:900}
+.ctop button{width:42px;height:42px;border:1px solid var(--line);border-radius:50%;
+  background:rgba(0,0,0,.2);color:var(--text)}
+.cmain{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}
+.clabel{color:var(--gold);font-size:12px;letter-spacing:.16em;font-weight:900}
+#cplayer{font-size:clamp(38px,12vw,82px);overflow-wrap:anywhere}
+#cinstruction{color:var(--muted);font-weight:900;letter-spacing:.08em}
+#cnumber{color:var(--gold2);font-size:clamp(110px,42vw,270px);line-height:1;font-weight:950;
+  font-variant-numeric:tabular-nums;text-shadow:0 0 45px rgba(230,184,95,.22)}
+.countdown.go #cnumber{color:#8af1b9;font-size:clamp(82px,27vw,185px)}
+#cprogress{color:var(--muted)}
+.ccontrols{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px 16px 18px}
+.ccontrols button{min-height:52px;border:1px solid var(--line);border-radius:12px;background:#202b39;color:var(--text);font-weight:900}
+@media(max-width:480px){.buttons{grid-template-columns:1fr}.time-row{gap:7px}}
+</style>
 </head>
 <body>
-  <main class="app">
-    <header class="hero">
-      <div class="badge">1564</div>
-      <div>
-        <p class="eyebrow">KINGSHOT TOOL</p>
-        <h1>Rally Sync Timer</h1>
-        <p class="sub">同步集結倒數工具 · Kingdom 1564</p>
-      </div>
-    </header>
-
-    <section class="card">
-      <div class="section-head">
-        <div>
-          <span class="step">01</span>
-          <h2>Rally Count <small>集結數量</small></h2>
-        </div>
-        <span class="tag">5 MIN RALLY</span>
-      </div>
-
-      <div class="count-grid" id="countGrid">
-        <button class="count-btn active" data-count="2">2<span>雙重</span></button>
-        <button class="count-btn" data-count="3">3<span>三重</span></button>
-        <button class="count-btn" data-count="4">4<span>四重</span></button>
-        <button class="count-btn" data-count="5">5<span>五重</span></button>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="section-head">
-        <div>
-          <span class="step">02</span>
-          <h2>Players <small>玩家與行軍時間</small></h2>
-        </div>
-      </div>
-
-      <div class="column-head">
-        <span>Player<br><small>玩家</small></span>
-        <span>Min<br><small>分鐘</small></span>
-        <span>Sec<br><small>秒數</small></span>
-      </div>
-
-      <div id="playersList" class="players-list"></div>
-
-      <div class="actions">
-        <button id="calculateBtn" class="btn primary">Calculate · 計算</button>
-        <button id="resetBtn" class="btn secondary">Reset · 重設</button>
-      </div>
-      <p id="errorMessage" class="message error" aria-live="polite"></p>
-    </section>
-
-    <section id="resultCard" class="card hidden">
-      <div class="section-head">
-        <div>
-          <span class="step">03</span>
-          <h2>Rally Order <small>集結順序</small></h2>
-        </div>
-      </div>
-
-      <div id="resultList" class="result-list"></div>
-
-      <div class="actions">
-        <button id="startBtn" class="btn primary">Start Countdown · 開始倒數</button>
-        <button id="copyBtn" class="btn secondary">Copy Result · 複製結果</button>
-      </div>
-      <p id="copyMessage" class="message success" aria-live="polite"></p>
-    </section>
-  </main>
-
-  <section id="countdownScreen" class="countdown hidden" aria-live="assertive">
-    <div class="countdown-bar">
-      <span>RALLY SYNC · 1564</span>
-      <button id="closeBtn" class="close-btn" aria-label="關閉">✕</button>
+<main class="app">
+  <header class="hero">
+    <div class="badge">1564</div>
+    <div>
+      <p class="kicker">KINGSHOT TOOL</p>
+      <h1>Rally Sync Timer</h1>
+      <p class="hero-sub">同步集結倒數工具 · Kingdom 1564</p>
+      <span class="version">VERSION 2.1</span>
     </div>
+  </header>
 
-    <div class="countdown-center">
-      <p class="countdown-kicker">NEXT PLAYER · 下一位</p>
-      <h2 id="countdownPlayer">Player</h2>
-      <p id="countdownInstruction">OPEN IN · 剩餘時間</p>
-      <div id="countdownNumber">0</div>
-      <p id="countdownIndex">1 / 2</p>
+  <section class="card">
+    <div class="head">
+      <div><span class="step">01</span><h2>Rally Count<small>集結數量</small></h2></div>
+      <span class="note">5-Minute Rally<br>固定五分鐘</span>
     </div>
-
-    <div class="countdown-actions">
-      <button id="pauseBtn" class="btn secondary">Pause · 暫停</button>
-      <button id="restartBtn" class="btn secondary">Restart · 重來</button>
+    <div class="counts">
+      <button class="count active" data-count="2">2<span>雙重</span></button>
+      <button class="count" data-count="3">3<span>三重</span></button>
+      <button class="count" data-count="4">4<span>四重</span></button>
+      <button class="count" data-count="5">5<span>五重</span></button>
     </div>
   </section>
 
-  <script src="script.js"></script>
+  <section class="card">
+    <div class="head">
+      <div><span class="step">02</span><h2>Players<small>玩家與行軍時間</small></h2></div>
+      <span class="note">Min + Sec<br>分鐘＋秒數</span>
+    </div>
+    <div id="players"></div>
+    <div class="buttons">
+      <button id="calculate" class="btn primary">Calculate · 計算</button>
+      <button id="reset" class="btn secondary">Reset · 重設</button>
+    </div>
+    <p id="error" class="msg error"></p>
+  </section>
+
+  <section id="resultsCard" class="card hidden">
+    <div class="head"><div><span class="step">03</span><h2>Rally Order<small>集結順序</small></h2></div></div>
+    <div id="results"></div>
+    <div class="buttons">
+      <button id="start" class="btn primary">Start Countdown · 開始倒數</button>
+      <button id="copy" class="btn secondary">Copy Result · 複製結果</button>
+    </div>
+    <p id="copyStatus" class="msg success"></p>
+  </section>
+</main>
+
+<section id="countdown" class="countdown hidden">
+  <div class="ctop"><span>KINGDOM 1564 · RALLY SYNC</span><button id="close">✕</button></div>
+  <div class="cmain">
+    <p class="clabel">NEXT PLAYER · 下一位</p>
+    <h2 id="cplayer">Player</h2>
+    <p id="cinstruction">OPEN IN · 剩餘時間</p>
+    <div id="cnumber">0</div>
+    <p id="cprogress">1 / 2</p>
+  </div>
+  <div class="ccontrols"><button id="pause">Pause · 暫停</button><button id="restart">Restart · 重來</button></div>
+</section>
+
+<script>
+const playersEl=document.getElementById("players");
+const resultsCard=document.getElementById("resultsCard");
+const resultsEl=document.getElementById("results");
+const errorEl=document.getElementById("error");
+const copyStatus=document.getElementById("copyStatus");
+const countdown=document.getElementById("countdown");
+const cplayer=document.getElementById("cplayer");
+const cinstruction=document.getElementById("cinstruction");
+const cnumber=document.getElementById("cnumber");
+const cprogress=document.getElementById("cprogress");
+
+let count=2,rallies=[],timeline=[],timer=null,startedAt=0,pausedAt=0,paused=false,finishTimer=null;
+
+function renderPlayers(){
+  playersEl.innerHTML="";
+  for(let i=0;i<count;i++){
+    const el=document.createElement("div");
+    el.className="player";
+    el.innerHTML=`
+      <div class="player-top"><strong>Rally ${i+1} · 集結 ${i+1}</strong></div>
+      <div class="name-row field">
+        <label>Player Name · 玩家名稱</label>
+        <input class="player-name" type="text" maxlength="24" placeholder="Player ${i+1}">
+      </div>
+      <div class="time-row">
+        <div class="field">
+          <label>Minutes · 分鐘</label>
+          <input class="minutes time-input" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" placeholder="0">
+        </div>
+        <div class="colon">:</div>
+        <div class="field">
+          <label>Seconds · 秒數</label>
+          <input class="seconds time-input" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="00">
+        </div>
+      </div>`;
+    playersEl.appendChild(el);
+  }
+}
+
+document.querySelectorAll(".count").forEach(btn=>btn.addEventListener("click",()=>{
+  document.querySelectorAll(".count").forEach(x=>x.classList.remove("active"));
+  btn.classList.add("active");count=Number(btn.dataset.count);renderPlayers();clearResults();
+}));
+
+playersEl.addEventListener("input",e=>{
+  if(!e.target.classList.contains("minutes")&&!e.target.classList.contains("seconds"))return;
+  e.target.value=e.target.value.replace(/\D/g,"");
+  if(e.target.classList.contains("minutes")&&Number(e.target.value)>5)e.target.value="5";
+  if(e.target.classList.contains("seconds")&&Number(e.target.value)>59)e.target.value="59";
+});
+
+function parseTime(m,s){
+  const min=m===""?0:Number(m),sec=s===""?0:Number(s);
+  if(!Number.isInteger(min)||!Number.isInteger(sec)||min<0||min>5||sec<0||sec>59)return null;
+  const total=min*60+sec;return total<=300?total:null;
+}
+function fmt(sec){return `${String(Math.floor(sec/60)).padStart(2,"0")}:${String(sec%60).padStart(2,"0")}`}
+function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+
+function calculate(){
+  errorEl.textContent="";copyStatus.textContent="";
+  const cards=[...document.querySelectorAll(".player")],data=[];
+  for(let i=0;i<cards.length;i++){
+    const name=cards[i].querySelector(".player-name").value.trim()||`Player ${i+1}`;
+    const march=parseTime(cards[i].querySelector(".minutes").value,cards[i].querySelector(".seconds").value);
+    if(march===null){errorEl.textContent=`請檢查第 ${i+1} 位：分鐘 0～5，秒數 0～59。`;clearResults();return}
+    data.push({name,march});
+  }
+  data.sort((a,b)=>b.march-a.march);
+  const longest=data[0].march;
+  rallies=data.map((x,i)=>({...x,pos:i+1,offset:longest-x.march}));
+  resultsEl.innerHTML=rallies.map(r=>`<div class="result"><div class="pos">${r.pos}</div>
+    <div><div class="rname">${esc(r.name)}</div><div class="rsub">March 行軍 ${fmt(r.march)}</div></div>
+    <div class="offset">${r.offset===0?"NOW · 立即":"+"+fmt(r.offset)}</div></div>`).join("");
+  resultsCard.classList.remove("hidden");resultsCard.scrollIntoView({behavior:"smooth"});
+}
+function clearResults(){rallies=[];resultsEl.innerHTML="";resultsCard.classList.add("hidden")}
+function stopTimer(clearFinish=true){if(timer){clearInterval(timer);timer=null}if(clearFinish&&finishTimer){clearTimeout(finishTimer);finishTimer=null}}
+function startCountdown(){
+  if(!rallies.length)return;
+  timeline=rallies.map(r=>({name:r.name,offset:r.offset,pos:r.pos}));
+  stopTimer();startedAt=performance.now();pausedAt=0;paused=false;
+  countdown.classList.remove("hidden","warning","go");document.body.style.overflow="hidden";
+  document.getElementById("pause").textContent="Pause · 暫停";tick();timer=setInterval(tick,100)
+}
+function tick(){
+  const elapsed=paused?pausedAt:(performance.now()-startedAt)/1000;
+  const nextIndex=timeline.findIndex(x=>x.offset>elapsed);
+  if(nextIndex===-1){
+    const last=timeline[timeline.length-1],since=elapsed-last.offset;
+    if(since<1.4)showGo(last,timeline.length-1);else finishCountdown();return
+  }
+  const ev=timeline[nextIndex],remaining=Math.max(0,Math.ceil(ev.offset-elapsed));
+  countdown.classList.toggle("warning",remaining<=5);countdown.classList.remove("go");
+  cplayer.textContent=ev.name;cinstruction.textContent="OPEN IN · 剩餘時間";
+  cnumber.textContent=remaining;cprogress.textContent=`${nextIndex+1} / ${timeline.length}`
+}
+function showGo(ev,index){
+  countdown.classList.remove("warning");countdown.classList.add("go");
+  cplayer.textContent=ev.name;cinstruction.textContent="OPEN RALLY NOW · 立即開集結";
+  cnumber.textContent="GO!";cprogress.textContent=`${index+1} / ${timeline.length}`
+}
+function finishCountdown(){
+  stopTimer(false);countdown.classList.remove("warning");countdown.classList.add("go");
+  cplayer.textContent="ALL RALLIES";cinstruction.textContent="COMPLETE · 全部已發車";
+  cnumber.textContent="DONE";cprogress.textContent=`${timeline.length} / ${timeline.length}`;
+  finishTimer=setTimeout(closeCountdown,2500)
+}
+function pauseCountdown(){
+  const btn=document.getElementById("pause");
+  if(!paused){pausedAt=(performance.now()-startedAt)/1000;paused=true;clearInterval(timer);timer=null;btn.textContent="Resume · 繼續"}
+  else{startedAt=performance.now()-pausedAt*1000;paused=false;timer=setInterval(tick,100);btn.textContent="Pause · 暫停"}
+}
+function closeCountdown(){stopTimer();countdown.classList.add("hidden");document.body.style.overflow=""}
+async function copyResult(){
+  const lines=["📢 Rally Order / 集結順序","Kingdom 1564",""];
+  rallies.forEach(r=>lines.push(`${r.pos}. ${r.name} — ${r.offset===0?"NOW / 立即":"+"+fmt(r.offset)}`));
+  const text=lines.join("\n");
+  try{await navigator.clipboard.writeText(text)}
+  catch{const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove()}
+  copyStatus.textContent="Copied! 已複製，可直接貼到遊戲聊天。"
+}
+function resetAll(){stopTimer();renderPlayers();clearResults();errorEl.textContent="";copyStatus.textContent=""}
+
+document.getElementById("calculate").onclick=calculate;
+document.getElementById("reset").onclick=resetAll;
+document.getElementById("start").onclick=startCountdown;
+document.getElementById("copy").onclick=copyResult;
+document.getElementById("pause").onclick=pauseCountdown;
+document.getElementById("restart").onclick=startCountdown;
+document.getElementById("close").onclick=closeCountdown;
+renderPlayers();
+</script>
 </body>
 </html>
