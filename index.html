@@ -1,0 +1,13 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kingshot Rally Sync Timer</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<h1>Kingshot Rally Sync Timer<br><small>Kingdom 1564</small></h1>
+<label>Rally Count / 集結數量
+<select id="count"><option>2</option><option>3</option><option>4</option><option selected>5</option></select></label>
+<table id="tbl"><tr><th>Player 玩家</th><th>March 行軍(mm:ss)</th></tr></table>
+<button onclick="build()">Build</button>
+<button onclick="calc()">Calculate 計算</button>
+<pre id="out"></pre>
+<script src="script.js"></script></body></html>
