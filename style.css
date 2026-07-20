@@ -158,8 +158,8 @@ h2 small {
 
 .players-header, .player-row {
   display: grid;
-  grid-template-columns: 1.25fr .75fr;
-  gap: 10px;
+  grid-template-columns: 1.45fr .55fr .55fr;
+  gap: 8px;
 }
 
 .players-header {
@@ -199,7 +199,25 @@ input {
 }
 
 .player-name { padding: 0 12px 0 36px; }
-.march-time { padding: 0 12px; text-align: center; font-variant-numeric: tabular-nums; }
+.march-minutes,
+.march-seconds {
+  padding: 0 8px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.march-minutes::-webkit-outer-spin-button,
+.march-minutes::-webkit-inner-spin-button,
+.march-seconds::-webkit-outer-spin-button,
+.march-seconds::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.march-minutes,
+.march-seconds {
+  appearance: textfield;
+}
 
 input:focus {
   border-color: var(--gold);
@@ -402,5 +420,18 @@ input:focus {
   @keyframes pulse {
     from { transform: scale(.96); }
     to { transform: scale(1.04); }
+  }
+}
+
+@media (max-width: 430px) {
+  .players-header, .player-row {
+    grid-template-columns: 1.35fr .52fr .52fr;
+    gap: 7px;
+  }
+
+  .march-minutes,
+  .march-seconds {
+    font-size: 15px;
+    padding: 0 4px;
   }
 }

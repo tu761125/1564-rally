@@ -45,29 +45,40 @@ document.querySelectorAll(".count-btn").forEach((button) => {
     button.classList.add("active");
     rallyCount = Number(button.dataset.count);
     renderPlayers();
+
+playersList.addEventListener("input", (event) => {
+  if (event.target.classList.contains("march-minutes")) {
+    let value = Number(event.target.value);
+    if (value > 5) event.target.value = 5;
+    if (value < 0) event.target.value = 0;
+  }
+
+  if (event.target.classList.contains("march-seconds")) {
+    let value = Number(event.target.value);
+    if (value > 59) event.target.value = 59;
+    if (value < 0) event.target.value = 0;
+  }
+});
+
     clearResults();
   });
 });
 
-function parseMarchTime(value) {
-  const trimmed = value.trim();
+function parseMarchTime(minutesValue, secondsValue) {
+  const minutesText = String(minutesValue ?? "").trim();
+  const secondsText = String(secondsValue ?? "").trim();
 
-  // 支援 mm:ss，例如 1:30
-  const timeMatch = trimmed.match(/^(\d{1,2}):([0-5]\d)$/);
-  if (timeMatch) {
-    const minutes = Number(timeMatch[1]);
-    const seconds = Number(timeMatch[2]);
-    const total = minutes * 60 + seconds;
-    return total <= 300 ? total : null;
-  }
+  const minutes = minutesText === "" ? 0 : Number(minutesText);
+  const seconds = secondsText === "" ? 0 : Number(secondsText);
 
-  // 也支援直接輸入秒數，例如 90
-  if (/^\d{1,3}$/.test(trimmed)) {
-    const total = Number(trimmed);
-    return total <= 300 ? total : null;
-  }
+  if (!Number.isInteger(minutes) || !Number.isInteger(seconds)) return null;
+  if (minutes < 0 || minutes > 5) return null;
+  if (seconds < 0 || seconds > 59) return null;
 
-  return null;
+  const total = minutes * 60 + seconds;
+  if (total > 300) return null;
+
+  return total;
 }
 
 function formatTime(totalSeconds) {
@@ -82,13 +93,14 @@ function collectPlayers() {
 
   for (let i = 0; i < rows.length; i++) {
     const nameInput = rows[i].querySelector(".player-name");
-    const marchInput = rows[i].querySelector(".march-time");
+    const minuteInput = rows[i].querySelector(".march-minutes");
+    const secondInput = rows[i].querySelector(".march-seconds");
 
     const name = nameInput.value.trim() || `Player ${i + 1}`;
-    const marchSeconds = parseMarchTime(marchInput.value);
+    const marchSeconds = parseMarchTime(minuteInput.value, secondInput.value);
 
     if (marchSeconds === null) {
-      throw new Error(`請檢查第 ${i + 1} 位的行軍時間，可輸入 1:30 或 90。`);
+      throw new Error(`請檢查第 ${i + 1} 位的行軍時間：分鐘 0～5，秒數 0～59。`);
     }
 
     players.push({ name, marchSeconds });
@@ -130,7 +142,7 @@ function renderResults() {
         <div class="result-name">${escapeHtml(rally.name)}</div>
         <div class="result-march">March 行軍 ${formatTime(rally.marchSeconds)}</div>
       </div>
-      <div class="result-offset">${rally.offset === 0 ? "NOW · 立即" : `+${rally.offset}s`}</div>
+      <div class="result-offset">${rally.offset === 0 ? "NOW · 立即" : `+${formatTime(rally.offset)}`}</div>
     </div>
   `).join("");
 }
@@ -293,7 +305,7 @@ async function copyResult() {
   calculatedRallies.forEach((rally) => {
     const timing = rally.offset === 0
       ? "NOW / 立即"
-      : `+${rally.offset}s / ${rally.offset}秒後`;
+      : `+${formatTime(rally.offset)} / ${rally.offset}秒後`;
 
     lines.push(`${rally.position}. ${rally.name} — ${timing}`);
   });
