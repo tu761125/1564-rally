@@ -1,23 +1,22 @@
-# Kingshot Rally Sync Timer v2.0
+# 1564 Rally Sync Timer — Version 3.0
 
-功能：
+正式版包含：
+- Quick Rally 快速集結
+- Player Pool 玩家池
+- 玩家勾選及名單保存
+- 分鐘、秒數與準備時間
+- UTC 時鐘與全畫面倒數
+- 瀏覽次數及目前在線人數
+- Firebase 正式設定
 
-- 中英文同頁
-- 2～5 重集結
-- 分鐘與秒數兩個獨立輸入框
-- 手機數字鍵盤
-- 自動排序與計算集結間隔
-- 全螢幕倒數
-- 自動切換下一位
-- 暫停、繼續、重新開始
-- 一鍵複製集結順序
-- 手機版介面
+## 上線方式
 
-## 更新方式
+1. 解壓縮 ZIP。
+2. 進入 GitHub 專案 `tu761125/1564-rally` 最外層。
+3. 將 `index.html` 上傳並覆蓋最外層原本的 `index.html`。
+4. 不要放進 `test` 資料夾。
+5. Commit changes。
+6. 等待 GitHub Pages 更新後開啟：
+   https://tu761125.github.io/1564-rally/?v=300
 
-將以下四個檔案上傳到 GitHub Repository 根目錄並覆蓋原檔案：
-
-- index.html
-- style.css
-- script.js
-- README.md
+`database.rules.json` 是備份用規則，不需要上傳到網站根目錄。
