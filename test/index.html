@@ -165,7 +165,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.4.0 MARCH + ARRIVAL ORDER</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.4.1 REJOIN COUNTDOWN FIX</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -391,6 +391,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
             <button type="button" id="manualStartBtn" class="btn primary">Start · 開始</button>
             <button type="button" id="manualPauseBtn" class="btn secondary">Pause · 暫停</button>
             <button type="button" id="manualResetBtn" class="btn secondary">Reset Countdown · 重設倒數</button>
+            <button type="button" id="manualRecoverBtn" class="btn secondary">Recover Countdown · 修復倒數</button>
             <button type="button" id="manualResetAllBtn" class="btn secondary">Reset Everything · 全部重設</button>
           </div>
 
@@ -1258,7 +1259,7 @@ const m=id=>document.getElementById(id);
 let manualServerOffset=0;
 onValue(ref(manualDb,".info/serverTimeOffset"),snap=>{manualServerOffset=Number(snap.val())||0});
 const manualNow=()=>Date.now()+manualServerOffset;
-let manualState={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null};
+let manualState={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null,sessionVersion:0,renderVersion:0};
 
 const normalizeManualRoom=v=>v.trim().toUpperCase();
 const manualRoomOk=v=>/^[A-Z0-9]{4,12}$/i.test(v);
@@ -1446,28 +1447,76 @@ async function joinRoom(){
 }
 async function enterRoom(rid,uid,isHost){
   clearInterval(manualState.timer);
+  manualState.timer=null;
   if(typeof manualState.roomUnsub==="function")manualState.roomUnsub();
   if(typeof manualState.memberUnsub==="function")manualState.memberUnsub();
-  manualState.roomId=rid;manualState.uid=uid;manualState.isHost=isHost;
+
+  manualState.sessionVersion=(manualState.sessionVersion||0)+1;
+  const sessionVersion=manualState.sessionVersion;
+  manualState.renderVersion=0;
+
+  manualState.roomId=rid;
+  manualState.uid=uid;
+  manualState.isHost=isHost;
+
   m("manualRoomEntry").classList.add("hidden");
   m("manualRoomLive").classList.remove("hidden");
   m("manualLiveRoomId").textContent=rid;
   m("manualRoomRole").textContent=isHost?"Host · 房長":"Viewer · 觀看者";
   m("manualHostSetup").classList.toggle("hidden",!isHost);
   m("manualHostControls").classList.toggle("hidden",!isHost);
+
   if(isHost&&!m("manualSequenceEditor").children.length)renderEditor(defaultPlayers());
+
+  const roomRef=ref(manualDb,`manualRooms/${rid}`);
+
+  // If the host returns after an old countdown already expired,
+  // clear only the countdown state. Keep players / march times / order.
+  if(isHost){
+    const roomSnap=await get(roomRef);
+    if(roomSnap.exists()){
+      const room=roomSnap.val()||{};
+      if(room.status==="running" && room.startedAt){
+        const total=Number(room.totalDuration||0);
+        const elapsed=Math.max(0,(manualNow()-Number(room.startedAt))/1000);
+        if(elapsed>total+2){
+          await update(roomRef,{
+            status:"waiting",
+            startedAt:null,
+            remaining:total,
+            recoveredAt:serverTimestamp()
+          });
+        }
+      }
+    }
+  }
+
   const memberRef=ref(manualDb,`manualRooms/${rid}/members/${uid}`);
   await onDisconnect(memberRef).remove();
-  manualState.roomUnsub=onValue(ref(manualDb,`manualRooms/${rid}`),snap=>{
-    if(!snap.exists()){manualMsg(m("manualRoomEntryMsg"),"Room closed or cleared · 房間已關閉或清空","error");return exitUi()}
-    renderRoom(snap.val());
+
+  manualState.roomUnsub=onValue(roomRef,snap=>{
+    if(sessionVersion!==manualState.sessionVersion)return;
+    if(!snap.exists()){
+      manualMsg(m("manualRoomEntryMsg"),"Room closed or cleared · 房間已關閉或清空","error");
+      return exitUi();
+    }
+    renderRoom(snap.val(),sessionVersion);
   });
+
   manualState.memberUnsub=onValue(memberRef,snap=>{
-    if(!snap.exists()&&manualState.roomId){manualMsg(m("manualRoomEntryMsg"),"You were removed by the host · 你已被房長踢出","error");exitUi()}
+    if(sessionVersion!==manualState.sessionVersion)return;
+    if(!snap.exists()&&manualState.roomId){
+      manualMsg(m("manualRoomEntryMsg"),"You were removed by the host · 你已被房長踢出","error");
+      exitUi();
+    }
   });
 }
-function renderRoom(room){
+function renderRoom(room,sessionVersion=manualState.sessionVersion){
+  if(sessionVersion!==manualState.sessionVersion)return;
+
   manualState.roomData=room;
+  manualState.renderVersion=(manualState.renderVersion||0)+1;
+  const renderVersion=manualState.renderVersion;
   if(manualState.isHost && room.prepSeconds!==undefined && m("manualPrepSeconds")){
     m("manualPrepSeconds").value=Number(room.prepSeconds)||0;
   }
@@ -1486,9 +1535,25 @@ function renderRoom(room){
     m("manualRoomMembers").appendChild(row);
   });
   renderRoster(room);
+
   clearInterval(manualState.timer);
-  const draw=()=>renderFrame(buildFrame(room,manualNow()));
-  draw();manualState.timer=setInterval(draw,100);
+  manualState.timer=null;
+
+  const draw=()=>{
+    if(sessionVersion!==manualState.sessionVersion)return;
+    if(renderVersion!==manualState.renderVersion)return;
+    try{
+      renderFrame(buildFrame(room,manualNow()));
+    }catch(error){
+      console.error("Manual countdown render error:",error);
+      clearInterval(manualState.timer);
+      manualState.timer=null;
+      manualMsg(m("manualRoomLiveMsg"),`${error.message||error} · 倒數顯示錯誤，請按修復倒數`,"error");
+    }
+  };
+
+  draw();
+  manualState.timer=setInterval(draw,100);
 }
 function renderRoster(room){
   const seq=[...(room.sequence||[])].sort((a,b)=>Number(a.launchAt)-Number(b.launchAt)||Number(a.arrivalOrder)-Number(b.arrivalOrder));
@@ -1655,6 +1720,39 @@ async function reset(){
   const room=manualState.roomData||{};
   await update(ref(manualDb,`manualRooms/${manualState.roomId}`),{remaining:Number(room.totalDuration||0),startedAt:null,status:"waiting"});
 }
+
+async function recoverManualCountdown(){
+  if(!manualState.isHost||!manualState.roomId)return;
+
+  if(!confirm("Recover countdown and return to waiting? · 修復倒數並回到等待開始嗎？"))return;
+
+  clearInterval(manualState.timer);
+  manualState.timer=null;
+  manualState.renderVersion=(manualState.renderVersion||0)+1;
+
+  const roomRef=ref(manualDb,`manualRooms/${manualState.roomId}`);
+  const snap=await get(roomRef);
+
+  if(!snap.exists()){
+    return manualMsg(m("manualRoomLiveMsg"),"Room no longer exists · 房間已不存在","error");
+  }
+
+  const room=snap.val()||{};
+  const total=Number(room.totalDuration||0);
+
+  await update(roomRef,{
+    status:"waiting",
+    startedAt:null,
+    remaining:total,
+    recoveredAt:serverTimestamp()
+  });
+
+  manualMsg(
+    m("manualRoomLiveMsg"),
+    "Countdown recovered. Press Start when ready · 倒數已修復，準備好後再按開始",
+    "success"
+  );
+}
 async function resetAll(){
   if(!manualState.isHost||!confirm("Reset all sequence settings? · 確定全部重設順序設定嗎？"))return;
   await update(ref(manualDb,`manualRooms/${manualState.roomId}`),{prepSeconds:3,sequence:[],totalDuration:0,remaining:0,startedAt:null,status:"waiting"});
@@ -1706,17 +1804,27 @@ async function leave(){
 }
 function exitUi(){
   clearInterval(manualState.timer);
+  manualState.timer=null;
   if(typeof manualState.roomUnsub==="function")manualState.roomUnsub();
   if(typeof manualState.memberUnsub==="function")manualState.memberUnsub();
-  manualState={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null};
-  m("manualRoomLive").classList.add("hidden");m("manualRoomEntry").classList.remove("hidden");
+
+  const nextSession=(manualState.sessionVersion||0)+1;
+  manualState={
+    roomId:null,uid:null,isHost:false,
+    roomUnsub:null,memberUnsub:null,timer:null,roomData:null,
+    sessionVersion:nextSession,renderVersion:0
+  };
+
+  closeOverlay();
+  m("manualRoomLive").classList.add("hidden");
+  m("manualRoomEntry").classList.remove("hidden");
 }
 function openOverlay(){m("manualCountdownOverlay").classList.remove("hidden");document.body.style.overflow="hidden"}
 function closeOverlay(){m("manualCountdownOverlay").classList.add("hidden");document.body.style.overflow=""}
 function init(){
   renderEditor(defaultPlayers());
   m("manualPrepSeconds")?.addEventListener("input",updatePreviews);
-  [["manualCreateRoomBtn",createRoom],["manualJoinRoomBtn",joinRoom],["manualLeaveRoomBtn",leave],["manualAddPlayerBtn",addPlayer],["manualCalculateBtn",calculate],["manualCopyBtn",copySequence],["manualStartBtn",start],["manualPauseBtn",pause],["manualResetBtn",reset],["manualResetAllBtn",resetAll],["manualFullscreenBtn",openOverlay],["manualCloseOverlayBtn",closeOverlay]].forEach(([id,fn])=>m(id)?.addEventListener("click",e=>{e.preventDefault();fn()}));
+  [["manualCreateRoomBtn",createRoom],["manualJoinRoomBtn",joinRoom],["manualLeaveRoomBtn",leave],["manualAddPlayerBtn",addPlayer],["manualCalculateBtn",calculate],["manualCopyBtn",copySequence],["manualStartBtn",start],["manualPauseBtn",pause],["manualResetBtn",reset],["manualRecoverBtn",recoverManualCountdown],["manualResetAllBtn",resetAll],["manualFullscreenBtn",openOverlay],["manualCloseOverlayBtn",closeOverlay]].forEach(([id,fn])=>m(id)?.addEventListener("click",e=>{e.preventDefault();fn()}));
   manualMsg(m("manualRoomEntryMsg"),"Manual room system ready · 自訂順序房間系統已就緒","success");
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();

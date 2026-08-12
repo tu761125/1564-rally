@@ -1,29 +1,15 @@
 {
   "rules": {
     "siteStats": {
-      "pageViews": {
-        ".read": "auth != null",
-        ".write": "auth != null",
-        ".validate": "newData.isNumber() && newData.val() >= 0"
-      }
+      "pageViews": {".read":"auth != null",".write":"auth != null",".validate":"newData.isNumber() && newData.val() >= 0"}
     },
     "sitePresence": {
-      ".read": "auth != null",
+      ".read":"auth != null",
       "$session": {
-        ".write": "auth != null && ((!data.exists() && (!newData.exists() || newData.child('uid').val() === auth.uid)) || (data.exists() && data.child('uid').val() === auth.uid))"
+        ".write":"auth != null && ((!data.exists() && (!newData.exists() || newData.child('uid').val() === auth.uid)) || (data.exists() && data.child('uid').val() === auth.uid))"
       }
     },
-    "rooms": {
-      "$roomId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
-    },
-    "manualRooms": {
-      "$roomId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
-    }
+    "rooms": {"$roomId":{".read":"auth != null",".write":"auth != null"}},
+    "manualRooms": {"$roomId":{".read":"auth != null",".write":"auth != null"}}
   }
 }
