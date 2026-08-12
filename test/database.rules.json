@@ -18,6 +18,12 @@
         ".read": "auth != null",
         ".write": "auth != null"
       }
+    },
+    "manualRooms": {
+      "$roomId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
     }
   }
 }

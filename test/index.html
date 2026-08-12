@@ -141,11 +141,31 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 .room-overlay #overlayNumber{font-size:clamp(110px,32vw,240px)}
 .room-overlay .countdown-roster{width:min(900px,100%);margin:24px auto 0}
 
+
+.manual-sequence-editor{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.manual-sequence-row{border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(255,255,255,.02)}
+.manual-sequence-top{display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:center}
+.manual-order-number{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);font-weight:900;color:var(--gold2)}
+.manual-sequence-actions{display:flex;gap:6px}
+.manual-sequence-actions button{min-height:38px;padding:6px 10px}
+.manual-gap-row{display:grid;grid-template-columns:1fr 110px;gap:10px;align-items:end;margin-top:10px}
+.manual-gap-row label{margin:0}
+.manual-arrival-preview{margin-top:8px;color:var(--muted);font-size:13px}
+@media(max-width:520px){.manual-sequence-top{grid-template-columns:40px 1fr}.manual-sequence-actions{grid-column:1/-1;justify-content:flex-end}.manual-gap-row{grid-template-columns:1fr}}
+
+
+.manual-march-row{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end;margin-top:10px}
+.manual-march-row label{margin:0}
+.manual-march-row .colon{font-size:28px;font-weight:900;color:var(--gold2);padding-bottom:10px}
+.manual-calc-preview{margin-top:8px;color:var(--muted);font-size:13px;line-height:1.5}
+.manual-calc-preview strong{color:var(--gold2)}
+@media(max-width:520px){.manual-march-row{grid-template-columns:1fr auto 1fr}}
+
 </style>
 </head>
 <body>
 <main class="app">
-<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.2.4 COPY WITHOUT PREP</span></div></header>
+<header class="hero"><div class="badge">1564</div><div><p class="kicker">KINGSHOT TOOL</p><h1>Rally Sync Timer</h1><p class="sub">玩家名單、集結同步與準備倒數</p><span class="version">VERSION 3.4.0 MARCH + ARRIVAL ORDER</span></div></header>
 
 <section class="utc-bar">
   <div>
@@ -159,6 +179,7 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
 <button class="tab-btn active" data-tab="quick">Quick Rally · 快速集結</button>
 <button class="tab-btn" data-tab="pool">Player Pool · 玩家名單</button>
 <button class="tab-btn" data-tab="room">Sync Room · 同步房間</button>
+<button class="tab-btn" data-tab="manual">Manual Order Room · 自訂順序房間</button>
 </div>
 
 <section class="card prep-card">
@@ -298,6 +319,109 @@ input{width:100%;height:51px;border:1px solid var(--line);border-radius:12px;bac
   </div>
 </div>
 
+
+<section id="manualRoomTab" class="hidden">
+  <section class="card">
+    <div class="head">
+      <div><span class="step">04</span><h2>Manual Order Room<small>自訂順序房間測試版</small></h2></div>
+      <span class="note">March + arrival order<br>行軍＋抵達順序</span>
+    </div>
+
+    <div id="manualRoomEntry" class="room-grid">
+      <div class="room-box">
+        <h3>Create Manual Room · 建立自訂順序房間</h3>
+        <label>Room ID · 房號</label>
+        <input id="manualCreateRoomId" maxlength="12" placeholder="1564ORDER">
+        <label>Password · 密碼</label>
+        <input id="manualCreatePassword" type="password" maxlength="12" placeholder="4–12 letters or numbers">
+        <label>Host ID · 房長 ID</label>
+        <input id="manualCreateHostId" maxlength="16" placeholder="Game ID · 遊戲 ID">
+        <button type="button" id="manualCreateRoomBtn" class="btn primary">Create Room · 建立房間</button>
+      </div>
+
+      <div class="room-box">
+        <h3>Join Manual Room · 加入自訂順序房間</h3>
+        <label>Room ID · 房號</label>
+        <input id="manualJoinRoomId" maxlength="12" placeholder="Room ID · 房號">
+        <label>Password · 密碼</label>
+        <input id="manualJoinPassword" type="password" maxlength="12" placeholder="Password · 密碼">
+        <label>Player ID · 玩家 ID</label>
+        <input id="manualJoinPlayerId" maxlength="16" placeholder="Game ID · 遊戲 ID">
+        <button type="button" id="manualJoinRoomBtn" class="btn primary">Join Room · 加入房間</button>
+      </div>
+    </div>
+    <p id="manualRoomEntryMsg" class="msg"></p>
+
+    <div id="manualRoomLive" class="hidden">
+      <div class="room-summary">
+        <div><small>Room · 房間</small><strong id="manualLiveRoomId">—</strong></div>
+        <div><small>Members · 人數</small><strong id="manualLiveRoomCount">0</strong></div>
+      </div>
+
+      <div class="room-grid">
+        <div class="room-box">
+          <h3>Members · 房間成員</h3>
+          <div id="manualRoomMembers"></div>
+          <button type="button" id="manualLeaveRoomBtn" class="btn secondary">Leave Room · 離開房間</button>
+        </div>
+
+        <div class="room-box">
+          <h3>Arrival Order + March Time · 抵達順序＋行軍時間</h3>
+          <p id="manualRoomRole" class="status-chip">Viewer · 觀看者</p>
+
+          <div id="manualHostSetup" class="hidden">
+            <label>Preparation Seconds · 預備秒數</label>
+            <input id="manualPrepSeconds" type="number" min="0" max="120" value="3">
+            <div id="manualSequenceEditor" class="manual-sequence-editor"></div>
+            <button type="button" id="manualAddPlayerBtn" class="btn secondary">+ Add Player · 新增玩家</button>
+            <button type="button" id="manualCalculateBtn" class="btn primary">Calculate Rally Schedule · 計算集結時間</button>
+            <button type="button" id="manualCopyBtn" class="btn secondary">Copy Rally Schedule · 複製集結清單</button>
+          </div>
+
+          <div class="room-countdown-view">
+            <p class="clabel">NEXT RALLY · 下一位開集結</p>
+            <h2 id="manualCurrentPlayer">—</h2>
+            <p id="manualInstruction">WAITING · 等待設定</p>
+            <div id="manualNumber">0</div>
+            <p id="manualProgress">0 / 0</p>
+            <div id="manualRoster" class="countdown-roster"></div>
+          </div>
+
+          <div id="manualHostControls" class="buttons hidden">
+            <button type="button" id="manualStartBtn" class="btn primary">Start · 開始</button>
+            <button type="button" id="manualPauseBtn" class="btn secondary">Pause · 暫停</button>
+            <button type="button" id="manualResetBtn" class="btn secondary">Reset Countdown · 重設倒數</button>
+            <button type="button" id="manualResetAllBtn" class="btn secondary">Reset Everything · 全部重設</button>
+          </div>
+
+          <button type="button" id="manualFullscreenBtn" class="btn secondary">Fullscreen Countdown · 全畫面倒數</button>
+        </div>
+      </div>
+      <p id="manualRoomLiveMsg" class="msg"></p>
+    </div>
+  </section>
+</section>
+
+<div id="manualCountdownOverlay" class="room-overlay hidden" aria-live="polite">
+  <div class="room-overlay-inner">
+    <div class="ctop">
+      <div>
+        <span id="manualOverlayRoomId">Room · 房間 —</span>
+        <span id="manualCountdownUtc">UTC 00:00:00</span>
+      </div>
+      <button type="button" id="manualCloseOverlayBtn">✕</button>
+    </div>
+    <div class="cmain">
+      <p class="clabel">NEXT RALLY · 下一位開集結</p>
+      <h2 id="manualOverlayCurrentPlayer">—</h2>
+      <p id="manualOverlayInstruction">WAITING · 等待設定</p>
+      <div id="manualOverlayNumber">0</div>
+      <p id="manualOverlayProgress">0 / 0</p>
+      <div id="manualOverlayRoster" class="countdown-roster"></div>
+    </div>
+  </div>
+</div>
+
 <section class="mini-counter">
   <span>👁 Visits · 瀏覽 <strong id="visitCount">--</strong></span>
   <span>🟢 Online · 在線 <strong id="onlineCount">--</strong></span>
@@ -331,6 +455,7 @@ function updateUtc(){
   $("utcDate").textContent=`${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,"0")}-${String(now.getUTCDate()).padStart(2,"0")} · UTC`;
   $("countdownUtc").textContent=`UTC ${time}`;
   const roomUtc=document.getElementById("roomCountdownUtc");if(roomUtc)roomUtc.textContent=`UTC ${time}`;
+  const manualUtc=document.getElementById("manualCountdownUtc");if(manualUtc)manualUtc.textContent=`UTC ${time}`;
 }
 updateUtc();
 setInterval(updateUtc,250);
@@ -341,7 +466,7 @@ function parse(min,sec){min=+(min||0);sec=+(sec||0);if(min<0||min>5||sec<0||sec>
 function buildRallies(data){const sorted=[...data].sort((a,b)=>b.march-a.march),longest=sorted[0].march;return sorted.map((x,i)=>({...x,pos:i+1,offset:longest-x.march}))}
 function resultHtml(rs){return rs.map(r=>`<div class="result"><div class="pos">${r.pos}</div><div><div class="rname">${esc(r.name)}</div><div class="rsub">March ${fmt(r.march)}</div></div><div class="offset">${r.offset===0?"NOW":"+"+fmt(r.offset)}</div></div>`).join("")}
 
-document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active");$("quickTab").classList.toggle("hidden",b.dataset.tab!=="quick");$("poolTab").classList.toggle("hidden",b.dataset.tab!=="pool");$("roomTab").classList.toggle("hidden",b.dataset.tab!=="room")});
+document.querySelectorAll(".tab-btn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active");$("quickTab").classList.toggle("hidden",b.dataset.tab!=="quick");$("poolTab").classList.toggle("hidden",b.dataset.tab!=="pool");$("roomTab").classList.toggle("hidden",b.dataset.tab!=="room");$("manualRoomTab").classList.toggle("hidden",b.dataset.tab!=="manual")});
 
 function renderQuick(){
  $("quickPlayers").innerHTML="";
@@ -1108,6 +1233,493 @@ if(document.readyState==="loading"){
 }else{
   initializeRoomUi();
 }
+</script>
+
+
+<script type="module">
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { getDatabase, ref, get, set, update, remove, onValue, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+
+const manualConfig={
+  apiKey:"AIzaSyDWGzhjYHMbpF7rAL06NAljkMqWLY_qrsA",
+  authDomain:"rally-12ebd.firebaseapp.com",
+  databaseURL:"https://rally-12ebd-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"rally-12ebd",
+  storageBucket:"rally-12ebd.firebasestorage.app",
+  messagingSenderId:"32423245045",
+  appId:"1:32423245045:web:b6967c121fb9e6ca0881bc",
+  measurementId:"G-ZCS1JXN6SB"
+};
+const manualApp=getApps().find(a=>a.name==="manual-order-room")||initializeApp(manualConfig,"manual-order-room");
+const manualAuth=getAuth(manualApp);
+const manualDb=getDatabase(manualApp);
+const m=id=>document.getElementById(id);
+let manualServerOffset=0;
+onValue(ref(manualDb,".info/serverTimeOffset"),snap=>{manualServerOffset=Number(snap.val())||0});
+const manualNow=()=>Date.now()+manualServerOffset;
+let manualState={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null};
+
+const normalizeManualRoom=v=>v.trim().toUpperCase();
+const manualRoomOk=v=>/^[A-Z0-9]{4,12}$/i.test(v);
+const manualPassOk=v=>/^[A-Za-z0-9]{4,12}$/.test(v);
+const manualIdOk=v=>v.trim().length>=2&&v.trim().length<=16;
+
+async function manualAuthUser(){
+  if(manualAuth.currentUser)return manualAuth.currentUser;
+  return (await signInAnonymously(manualAuth)).user;
+}
+async function manualHash(text){
+  const raw=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(text));
+  return [...new Uint8Array(raw)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+function manualMsg(el,text,type=""){
+  if(!el)return;
+  el.textContent=text;
+  el.className="msg "+type;
+}
+function manualEsc(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function manualSetText(id,value){
+  const el=m(id);
+  if(el)el.textContent=value;
+}
+function defaultPlayers(){
+  return [
+    {name:"Player 1",marchMin:0,marchSec:0,gap:0},
+    {name:"Player 2",marchMin:0,marchSec:0,gap:0},
+    {name:"Player 3",marchMin:0,marchSec:0,gap:0}
+  ];
+}
+function renderEditor(players){
+  const root=m("manualSequenceEditor");
+  root.innerHTML="";
+  players.forEach((p,index)=>{
+    const row=document.createElement("div");
+    row.className="manual-sequence-row";
+    row.innerHTML=`
+      <div class="manual-sequence-top">
+        <div class="manual-order-number">${index+1}</div>
+        <input class="manual-player-name" maxlength="20" value="${manualEsc(p.name||`Player ${index+1}`)}" placeholder="Player ID · 玩家 ID">
+        <div class="manual-sequence-actions">
+          <button type="button" class="btn secondary manual-up" ${index===0?"disabled":""}>↑</button>
+          <button type="button" class="btn secondary manual-down" ${index===players.length-1?"disabled":""}>↓</button>
+          <button type="button" class="btn secondary manual-remove">×</button>
+        </div>
+      </div>
+
+      <div class="manual-march-row">
+        <label>March Min · 行軍分鐘
+          <input class="manual-march-min" type="number" min="0" max="99" value="${Number(p.marchMin)||0}">
+        </label>
+        <div class="colon">:</div>
+        <label>March Sec · 行軍秒數
+          <input class="manual-march-sec" type="number" min="0" max="59" value="${Number(p.marchSec)||0}">
+        </label>
+      </div>
+
+      <div class="manual-gap-row">
+        <label>Arrival gap after previous · 與上一位抵達間隔（0–120 秒）
+          <input class="manual-gap" type="number" min="0" max="120" value="${index===0?0:Number(p.gap)||0}" ${index===0?"disabled":""}>
+        </label>
+        <div class="manual-arrival-preview">Arrival offset · 抵達差：<strong class="manual-arrival">—s</strong></div>
+      </div>
+      <div class="manual-calc-preview">
+        March · 行軍：<strong class="manual-march-preview">0s</strong><br>
+        Calculated rally start · 計算開集結：<strong class="manual-launch-preview">—</strong>
+      </div>`;
+
+    row.querySelector(".manual-up").onclick=()=>movePlayer(index,-1);
+    row.querySelector(".manual-down").onclick=()=>movePlayer(index,1);
+    row.querySelector(".manual-remove").onclick=()=>removePlayer(index);
+    row.querySelectorAll("input").forEach(el=>el.addEventListener("input",updatePreviews));
+    root.appendChild(row);
+  });
+  updatePreviews();
+}
+function getPlayers(){
+  return [...m("manualSequenceEditor").querySelectorAll(".manual-sequence-row")].map((row,index)=>({
+    name:row.querySelector(".manual-player-name").value.trim()||`Player ${index+1}`,
+    marchMin:Math.max(0,Math.min(99,Number(row.querySelector(".manual-march-min").value)||0)),
+    marchSec:Math.max(0,Math.min(59,Number(row.querySelector(".manual-march-sec").value)||0)),
+    gap:index===0?0:Math.max(0,Math.min(120,Number(row.querySelector(".manual-gap").value)||0))
+  }));
+}
+function updatePreviews(){
+  const prep=Math.max(0,Math.min(120,Number(m("manualPrepSeconds")?.value)||0));
+  const rows=[...m("manualSequenceEditor").querySelectorAll(".manual-sequence-row")];
+  const players=getPlayers();
+
+  let arrivalOffset=0;
+  const arrivalOffsets=players.map((p,index)=>{
+    if(index>0)arrivalOffset+=p.gap;
+    return arrivalOffset;
+  });
+
+  const launchRaw=players.map((p,index)=>{
+    const march=p.marchMin*60+p.marchSec;
+    return arrivalOffsets[index]-march;
+  });
+  const minRaw=launchRaw.length?Math.min(...launchRaw):0;
+  const shift=prep-minRaw;
+
+  rows.forEach((row,index)=>{
+    const p=players[index];
+    const march=p.marchMin*60+p.marchSec;
+    const launch=Math.max(0,Math.round(shift+arrivalOffsets[index]-march));
+    row.querySelector(".manual-arrival").textContent=`${arrivalOffsets[index]}s`;
+    row.querySelector(".manual-march-preview").textContent=`${march}s`;
+    row.querySelector(".manual-launch-preview").textContent=`${launch}s`;
+  });
+}
+function movePlayer(index,delta){
+  const players=getPlayers();
+  const next=index+delta;
+  if(next<0||next>=players.length)return;
+  [players[index],players[next]]=[players[next],players[index]];
+  players[0].gap=0;
+  renderEditor(players);
+}
+function removePlayer(index){
+  const players=getPlayers();
+  players.splice(index,1);
+  if(!players.length)players.push({name:"Player 1",marchMin:0,marchSec:0,gap:0});
+  players[0].gap=0;
+  renderEditor(players);
+}
+function addPlayer(){
+  const players=getPlayers();
+  players.push({name:`Player ${players.length+1}`,marchMin:0,marchSec:0,gap:0});
+  renderEditor(players);
+}
+
+async function createRoom(){
+  const rid=normalizeManualRoom(m("manualCreateRoomId").value);
+  const pw=m("manualCreatePassword").value;
+  const pid=m("manualCreateHostId").value.trim();
+  if(!manualRoomOk(rid))return manualMsg(m("manualRoomEntryMsg"),"Room ID: 4–12 letters or numbers · 房號需為 4–12 位英文或數字","error");
+  if(!manualPassOk(pw))return manualMsg(m("manualRoomEntryMsg"),"Password: 4–12 letters or numbers · 密碼需為 4–12 位英文或數字","error");
+  if(!manualIdOk(pid))return manualMsg(m("manualRoomEntryMsg"),"Host ID: 2–16 characters · 房長 ID 需為 2–16 字元","error");
+  try{
+    const user=await manualAuthUser();
+    const rr=ref(manualDb,`manualRooms/${rid}`);
+    const existing=await get(rr);
+    if(existing.exists()){
+      const room=existing.val()||{};
+      if(Object.keys(room.members||{}).length===0)await remove(rr);
+      else return manualMsg(m("manualRoomEntryMsg"),"Room ID already exists · 房號已存在","error");
+    }
+    await set(rr,{
+      passwordHash:await manualHash(pw),hostUid:user.uid,createdAt:serverTimestamp(),
+      status:"waiting",prepSeconds:3,sequence:[],totalDuration:0,remaining:0,startedAt:null,
+      members:{[user.uid]:{playerId:pid,role:"host",joinedAt:serverTimestamp()}}
+    });
+    await enterRoom(rid,user.uid,true);
+  }catch(error){
+    console.error(error);
+    manualMsg(m("manualRoomEntryMsg"),`${error.code||"Firebase error"} · 建立房間失敗`,"error");
+  }
+}
+async function joinRoom(){
+  const rid=normalizeManualRoom(m("manualJoinRoomId").value);
+  const pw=m("manualJoinPassword").value;
+  const pid=m("manualJoinPlayerId").value.trim();
+  if(!manualRoomOk(rid)||!manualPassOk(pw)||!manualIdOk(pid))
+    return manualMsg(m("manualRoomEntryMsg"),"Please check Room ID, Password and Player ID · 請檢查房號、密碼與玩家 ID","error");
+  try{
+    const user=await manualAuthUser();
+    const rr=ref(manualDb,`manualRooms/${rid}`);
+    const snap=await get(rr);
+    if(!snap.exists())return manualMsg(m("manualRoomEntryMsg"),"Room not found · 找不到房間","error");
+    const room=snap.val();
+    if(await manualHash(pw)!==room.passwordHash)return manualMsg(m("manualRoomEntryMsg"),"Wrong password · 密碼錯誤","error");
+    const isHost=room.hostUid===user.uid;
+    const duplicate=Object.entries(room.members||{}).some(([key,v])=>key!==user.uid&&(v.playerId||"").toLowerCase()===pid.toLowerCase());
+    if(duplicate)return manualMsg(m("manualRoomEntryMsg"),"Player ID already exists · 玩家 ID 已存在","error");
+    await set(ref(manualDb,`manualRooms/${rid}/members/${user.uid}`),{playerId:pid,role:isHost?"host":"viewer",joinedAt:serverTimestamp()});
+    await enterRoom(rid,user.uid,isHost);
+  }catch(error){
+    console.error(error);
+    manualMsg(m("manualRoomEntryMsg"),`${error.code||"Firebase error"} · 加入房間失敗`,"error");
+  }
+}
+async function enterRoom(rid,uid,isHost){
+  clearInterval(manualState.timer);
+  if(typeof manualState.roomUnsub==="function")manualState.roomUnsub();
+  if(typeof manualState.memberUnsub==="function")manualState.memberUnsub();
+  manualState.roomId=rid;manualState.uid=uid;manualState.isHost=isHost;
+  m("manualRoomEntry").classList.add("hidden");
+  m("manualRoomLive").classList.remove("hidden");
+  m("manualLiveRoomId").textContent=rid;
+  m("manualRoomRole").textContent=isHost?"Host · 房長":"Viewer · 觀看者";
+  m("manualHostSetup").classList.toggle("hidden",!isHost);
+  m("manualHostControls").classList.toggle("hidden",!isHost);
+  if(isHost&&!m("manualSequenceEditor").children.length)renderEditor(defaultPlayers());
+  const memberRef=ref(manualDb,`manualRooms/${rid}/members/${uid}`);
+  await onDisconnect(memberRef).remove();
+  manualState.roomUnsub=onValue(ref(manualDb,`manualRooms/${rid}`),snap=>{
+    if(!snap.exists()){manualMsg(m("manualRoomEntryMsg"),"Room closed or cleared · 房間已關閉或清空","error");return exitUi()}
+    renderRoom(snap.val());
+  });
+  manualState.memberUnsub=onValue(memberRef,snap=>{
+    if(!snap.exists()&&manualState.roomId){manualMsg(m("manualRoomEntryMsg"),"You were removed by the host · 你已被房長踢出","error");exitUi()}
+  });
+}
+function renderRoom(room){
+  manualState.roomData=room;
+  if(manualState.isHost && room.prepSeconds!==undefined && m("manualPrepSeconds")){
+    m("manualPrepSeconds").value=Number(room.prepSeconds)||0;
+  }
+  const members=Object.entries(room.members||{});
+  m("manualLiveRoomCount").textContent=members.length;
+  m("manualRoomMembers").innerHTML="";
+  members.forEach(([key,member])=>{
+    const row=document.createElement("div");row.className="member-row";
+    const isHost=key===room.hostUid||member.role==="host";
+    row.innerHTML=`<span class="member-name">${isHost?"👑 ":"🟢 "}${manualEsc(member.playerId||"Unknown")}</span>`;
+    if(manualState.isHost&&!isHost){
+      const btn=document.createElement("button");btn.className="btn secondary kick-btn";btn.textContent="Kick · 踢出";
+      btn.onclick=async()=>{if(confirm(`Kick ${member.playerId}? · 確定踢出 ${member.playerId}？`))await remove(ref(manualDb,`manualRooms/${manualState.roomId}/members/${key}`))};
+      row.appendChild(btn);
+    }
+    m("manualRoomMembers").appendChild(row);
+  });
+  renderRoster(room);
+  clearInterval(manualState.timer);
+  const draw=()=>renderFrame(buildFrame(room,manualNow()));
+  draw();manualState.timer=setInterval(draw,100);
+}
+function renderRoster(room){
+  const seq=[...(room.sequence||[])].sort((a,b)=>Number(a.launchAt)-Number(b.launchAt)||Number(a.arrivalOrder)-Number(b.arrivalOrder));
+  const rows=seq.map((r,index)=>`
+    <div class="roster-row" data-id="${manualEsc(r.id)}">
+      <div class="roster-index">${index+1}</div>
+      <div class="roster-name">
+        ${manualEsc(r.name)}
+        <small style="display:block;color:var(--muted);font-weight:600">
+          March ${Number(r.march||0)}s · 行軍 ${Number(r.march||0)}秒
+          ｜ Arrival #${Number(r.arrivalOrder||0)} · 抵達第${Number(r.arrivalOrder||0)}
+        </small>
+      </div>
+      <div class="roster-state">--</div>
+    </div>`).join("");
+  m("manualRoster").innerHTML=rows;
+  m("manualOverlayRoster").innerHTML=rows;
+  m("manualOverlayRoomId").textContent=`Room · 房間 ${manualState.roomId||"—"}`;
+}
+function buildFrame(room,now){
+  const seq=[...(room.sequence||[])].sort((a,b)=>Number(a.launchAt)-Number(b.launchAt)||Number(a.arrivalOrder)-Number(b.arrivalOrder));
+  const total=Number(room.totalDuration||0);
+  let elapsed=0;
+
+  if(room.status==="running"&&room.startedAt){
+    elapsed=Math.max(0,(now-Number(room.startedAt))/1000);
+  }else if(room.status==="paused"){
+    elapsed=Math.max(0,total-Number(room.remaining??total));
+  }
+
+  if(!seq.length){
+    return {seq,elapsed,index:-1,player:"—",instruction:"WAITING · 等待設定",number:"0",progress:"0 / 0",done:false};
+  }
+
+  if(room.status==="waiting"){
+    const first=seq[0];
+    return {
+      seq,elapsed:0,index:0,player:first.name,
+      instruction:"GET READY · 準備開集結",
+      number:String(Math.max(0,Math.ceil(Number(first.launchAt||0)))),
+      progress:`1 / ${seq.length}`,done:false
+    };
+  }
+
+  const idx=seq.findIndex(r=>Number(r.launchAt)>elapsed);
+
+  if(idx<0){
+    const last=seq.at(-1);
+    if(elapsed-Number(last.launchAt)<1.2){
+      return {
+        seq,elapsed,index:seq.length-1,player:last.name,
+        instruction:"OPEN RALLY NOW · 立即開集結",
+        number:"GO!",progress:`${seq.length} / ${seq.length}`,done:false
+      };
+    }
+    return {
+      seq,elapsed,index:seq.length,player:"ALL RALLIES",
+      instruction:"COMPLETE · 全部完成",
+      number:"DONE",progress:`${seq.length} / ${seq.length}`,done:true
+    };
+  }
+
+  const r=seq[idx];
+  const remain=Math.max(0,Math.ceil(Number(r.launchAt)-elapsed));
+  return {
+    seq,elapsed,index:idx,player:r.name,
+    instruction:room.status==="paused"?"PAUSED · 已暫停":"OPEN IN · 開集結倒數",
+    number:String(remain),
+    progress:`${idx+1} / ${seq.length}`,
+    done:false
+  };
+}
+function renderFrame(frame){
+  ["manualCurrentPlayer","manualOverlayCurrentPlayer"].forEach(id=>manualSetText(id,frame.player));
+  ["manualInstruction","manualOverlayInstruction"].forEach(id=>manualSetText(id,frame.instruction));
+  ["manualNumber","manualOverlayNumber"].forEach(id=>manualSetText(id,frame.number));
+  ["manualProgress","manualOverlayProgress"].forEach(id=>manualSetText(id,frame.progress));
+  ["manualRoster","manualOverlayRoster"].forEach(id=>{
+    const root=m(id);if(!root)return;
+    frame.seq.forEach((r,index)=>{
+      const row=root.querySelector(`[data-id="${CSS.escape(r.id)}"]`);if(!row)return;
+      const remain=Math.max(0,Math.ceil(Number(r.launchAt)-frame.elapsed));
+      let state=`${remain}s · ${remain}秒`;row.classList.remove("current","done");
+      if(frame.done||frame.elapsed>Number(r.launchAt)+1.1){state="DONE · 已開集結";row.classList.add("done")}
+      else if(index===frame.index){state=remain===0?"GO! · 開集結":`${remain}s · ${remain}秒`;row.classList.add("current")}
+      row.querySelector(".roster-state").textContent=state;
+    });
+  });
+}
+async function calculate(){
+  if(!manualState.isHost)return;
+
+  const players=getPlayers();
+  if(!players.length){
+    return manualMsg(m("manualRoomLiveMsg"),"Add at least one player · 請至少新增一位玩家","error");
+  }
+
+  const invalid=players.find(p=>(p.marchMin*60+p.marchSec)<=0);
+  if(invalid){
+    return manualMsg(m("manualRoomLiveMsg"),`Enter march time for ${invalid.name} · 請輸入 ${invalid.name} 的行軍時間`,"error");
+  }
+
+  const prep=Math.max(0,Math.min(120,Number(m("manualPrepSeconds")?.value)||0));
+
+  // Desired arrival order offsets: first arrival = 0, later arrivals accumulate the chosen gaps.
+  let arrivalOffset=0;
+  const desired=players.map((p,index)=>{
+    if(index>0)arrivalOffset+=p.gap;
+    return {
+      name:p.name,
+      gap:index===0?0:p.gap,
+      march:p.marchMin*60+p.marchSec,
+      arrivalOffset
+    };
+  });
+
+  // Raw rally start time if first desired arrival were at t=0:
+  // start = arrivalOffset - march.
+  // Shift every start equally so the earliest actual rally start happens exactly after prep seconds.
+  const rawStarts=desired.map(p=>p.arrivalOffset-p.march);
+  const earliestRaw=Math.min(...rawStarts);
+  const shift=prep-earliestRaw;
+
+  const sequence=desired.map((p,index)=>({
+    id:`m${Date.now()}_${index}`,
+    name:p.name,
+    arrivalOrder:index+1,
+    gap:p.gap,
+    march:p.march,
+    arrivalOffset:p.arrivalOffset,
+    launchAt:Math.max(0,Math.round(shift+p.arrivalOffset-p.march)),
+    actualArrivalAt:Math.max(0,Math.round(shift+p.arrivalOffset))
+  }));
+
+  const totalDuration=Math.max(...sequence.map(p=>p.launchAt),prep);
+
+  await update(ref(manualDb,`manualRooms/${manualState.roomId}`),{
+    prepSeconds:prep,
+    sequence,
+    totalDuration,
+    remaining:totalDuration,
+    startedAt:null,
+    status:"waiting"
+  });
+
+  manualMsg(m("manualRoomLiveMsg"),"Rally schedule calculated · 集結時間已計算","success");
+}
+async function start(){
+  if(!manualState.isHost)return;
+  const room=manualState.roomData;
+  if(!(room?.sequence||[]).length)return manualMsg(m("manualRoomLiveMsg"),"Calculate sequence first · 請先計算順序","error");
+  await update(ref(manualDb,`manualRooms/${manualState.roomId}`),{remaining:Number(room.totalDuration||0),startedAt:serverTimestamp(),status:"running"});
+  openOverlay();
+}
+async function pause(){
+  if(!manualState.isHost)return;
+  const snap=await get(ref(manualDb,`manualRooms/${manualState.roomId}`));if(!snap.exists())return;
+  const room=snap.val();let remain=Number(room.remaining??room.totalDuration??0);
+  if(room.status==="running"&&room.startedAt)remain=Math.max(0,Number(room.totalDuration||0)-Math.floor((manualNow()-Number(room.startedAt))/1000));
+  await update(ref(manualDb,`manualRooms/${manualState.roomId}`),{remaining:remain,startedAt:null,status:"paused"});
+}
+async function reset(){
+  if(!manualState.isHost)return;
+  const room=manualState.roomData||{};
+  await update(ref(manualDb,`manualRooms/${manualState.roomId}`),{remaining:Number(room.totalDuration||0),startedAt:null,status:"waiting"});
+}
+async function resetAll(){
+  if(!manualState.isHost||!confirm("Reset all sequence settings? · 確定全部重設順序設定嗎？"))return;
+  await update(ref(manualDb,`manualRooms/${manualState.roomId}`),{prepSeconds:3,sequence:[],totalDuration:0,remaining:0,startedAt:null,status:"waiting"});
+  if(m("manualPrepSeconds"))m("manualPrepSeconds").value=3;
+  renderEditor(defaultPlayers());
+}
+async function copySequence(){
+  const room=manualState.roomData;
+  const seq=[...(room?.sequence||[])];
+
+  if(!seq.length){
+    return manualMsg(m("manualRoomLiveMsg"),"Calculate rally schedule first · 請先計算集結時間","error");
+  }
+
+  const launchOrder=[...seq].sort((a,b)=>Number(a.launchAt)-Number(b.launchAt)||Number(a.arrivalOrder)-Number(b.arrivalOrder));
+  const arrivalOrder=[...seq].sort((a,b)=>Number(a.arrivalOrder)-Number(b.arrivalOrder));
+  const prep=Number(room.prepSeconds||0);
+
+  const text=[
+    `Room · 房間：${manualState.roomId}`,
+    `Preparation · 預備秒數：${prep}s`,
+    "",
+    "Rally start order · 開集結順序",
+    ...launchOrder.map((r,i)=>`${i+1}. ${r.name} — ${Number(r.launchAt||0)}s  (March ${Number(r.march||0)}s)`),
+    "",
+    "Arrival order · 抵達順序",
+    ...arrivalOrder.map((r,i)=>`${i+1}. ${r.name} — +${Number(r.arrivalOffset||0)}s`)
+  ].join("\n");
+
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch{
+    const ta=document.createElement("textarea");
+    ta.value=text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+  }
+
+  manualMsg(m("manualRoomLiveMsg"),"Rally schedule copied · 集結清單已複製","success");
+}
+async function leave(){
+  if(!manualState.roomId)return;
+  const rid=manualState.roomId,uid=manualState.uid;
+  await remove(ref(manualDb,`manualRooms/${rid}/members/${uid}`));
+  if(!(await get(ref(manualDb,`manualRooms/${rid}/members`))).exists())await remove(ref(manualDb,`manualRooms/${rid}`));
+  exitUi();
+}
+function exitUi(){
+  clearInterval(manualState.timer);
+  if(typeof manualState.roomUnsub==="function")manualState.roomUnsub();
+  if(typeof manualState.memberUnsub==="function")manualState.memberUnsub();
+  manualState={roomId:null,uid:null,isHost:false,roomUnsub:null,memberUnsub:null,timer:null,roomData:null};
+  m("manualRoomLive").classList.add("hidden");m("manualRoomEntry").classList.remove("hidden");
+}
+function openOverlay(){m("manualCountdownOverlay").classList.remove("hidden");document.body.style.overflow="hidden"}
+function closeOverlay(){m("manualCountdownOverlay").classList.add("hidden");document.body.style.overflow=""}
+function init(){
+  renderEditor(defaultPlayers());
+  m("manualPrepSeconds")?.addEventListener("input",updatePreviews);
+  [["manualCreateRoomBtn",createRoom],["manualJoinRoomBtn",joinRoom],["manualLeaveRoomBtn",leave],["manualAddPlayerBtn",addPlayer],["manualCalculateBtn",calculate],["manualCopyBtn",copySequence],["manualStartBtn",start],["manualPauseBtn",pause],["manualResetBtn",reset],["manualResetAllBtn",resetAll],["manualFullscreenBtn",openOverlay],["manualCloseOverlayBtn",closeOverlay]].forEach(([id,fn])=>m(id)?.addEventListener("click",e=>{e.preventDefault();fn()}));
+  manualMsg(m("manualRoomEntryMsg"),"Manual room system ready · 自訂順序房間系統已就緒","success");
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 </script>
 
 </body>
